@@ -27,8 +27,6 @@ export function SidePanel() {
         const u = ctx.user as { id?: string; displayName?: string; loginHint?: string; userPrincipalName?: string } | undefined;
         const id = u?.id ?? `anon-${instanceId}`;
         setCurrentUserId(id);
-        console.log("[MeetBurn] ctx.user fields:", JSON.stringify({ id: u?.id, displayName: u?.displayName, loginHint: u?.loginHint, userPrincipalName: u?.userPrincipalName }));
-
         const nameFromCtx = u?.displayName || u?.loginHint || u?.userPrincipalName || "";
         if (nameFromCtx) { setCurrentUserDisplayName(nameFromCtx); return; }
 
@@ -36,10 +34,9 @@ export function SidePanel() {
           const token = await authentication.getAuthToken();
           const payload = JSON.parse(atob(token.split(".")[1]));
           const nameFromToken = payload.name || payload.preferred_username || "";
-          console.log("[MeetBurn] token name claim:", nameFromToken);
           if (nameFromToken) setCurrentUserDisplayName(nameFromToken);
-        } catch (e) {
-          console.log("[MeetBurn] getAuthToken failed:", e);
+        } catch {
+          // no name source available
         }
       })
       .catch(() => setCurrentUserId(`anon-${instanceId}`));
