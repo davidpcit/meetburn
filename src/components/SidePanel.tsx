@@ -24,8 +24,9 @@ export function SidePanel() {
   useEffect(() => {
     app.getContext()
       .then((ctx) => {
-        setCurrentUserId(ctx.user?.id ?? `anon-${instanceId}`);
-        setCurrentUserDisplayName((ctx.user as { displayName?: string })?.displayName ?? "");
+        const u = ctx.user as { id?: string; displayName?: string; loginHint?: string; userPrincipalName?: string } | undefined;
+        setCurrentUserId(u?.id ?? `anon-${instanceId}`);
+        setCurrentUserDisplayName(u?.displayName ?? u?.loginHint ?? u?.userPrincipalName ?? "");
       })
       .catch(() => setCurrentUserId(`anon-${instanceId}`));
   }, [instanceId]);
@@ -57,7 +58,10 @@ export function SidePanel() {
         });
       } else if (!participants[tp.aadObjectId].active) {
         // Reconnected — restore active
-        upsertParticipant(tp.aadObjectId, { ...participants[tp.aadObjectId], active: true });
+        upsertParticipant(tp.aadObjectId, { ...participants[tp.aadObjectId], displayName: tp.displayName, active: true });
+      } else if (tp.displayName && participants[tp.aadObjectId].displayName === tp.aadObjectId) {
+        // Real name became available to replace GUID fallback
+        upsertParticipant(tp.aadObjectId, { ...participants[tp.aadObjectId], displayName: tp.displayName });
       }
     });
 
