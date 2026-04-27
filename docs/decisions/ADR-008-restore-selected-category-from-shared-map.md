@@ -1,6 +1,6 @@
 # ADR-008: Restore selected category from SharedMap on reconnect
 
-## Status: Accepted
+## Status: Superseded by ADR-012
 
 ## Context
 

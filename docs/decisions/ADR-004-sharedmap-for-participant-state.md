@@ -1,6 +1,6 @@
 # ADR-004: SharedMap for Participant State (vs LiveState / LivePresence)
 
-## Status: Accepted
+## Status: Superseded by ADR-012
 
 ## Context
 

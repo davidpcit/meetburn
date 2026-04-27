@@ -1,6 +1,6 @@
 # ADR-001: Use Live Share SDK for Real-Time State Synchronization
 
-## Status: Accepted
+## Status: Superseded by ADR-012
 
 ## Context
 

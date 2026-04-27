@@ -1,5 +1,5 @@
 # ADR-010: Self-registration via app.getContext fallback
-## Status: Accepted
+## Status: Superseded by ADR-012
 ## Context
 `meeting.getParticipants()` does not return the current user when they are alone in the meeting. As a result the organizer cannot see or select their own category in the side panel.
 ## Decision

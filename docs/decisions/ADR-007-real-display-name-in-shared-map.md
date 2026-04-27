@@ -1,6 +1,6 @@
 # ADR-007: Persist real display name in SharedMap
 
-## Status: Accepted
+## Status: Superseded by ADR-012
 
 ## Context
 

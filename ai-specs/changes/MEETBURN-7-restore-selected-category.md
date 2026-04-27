@@ -1,13 +1,20 @@
-# MEETBURN-7: Restore selected category on side panel reopen
+# MEETBURN-7: Restore category assignments on side panel reopen
 
 ## User Story
 
-As a meeting participant, when I reopen the MeetBurn side panel during an ongoing meeting, I want to see my previously selected category already marked, so I don't have to reselect it.
+**As a** meeting organizer,
+**I want** the category assignments I made to be preserved when I close and reopen the side panel,
+**So that** I don't lose my work if Teams unmounts the iframe.
+
+## Solution
+
+`useMeetingState` initialises by reading from `localStorage[meetingId]`. All category assignments written during the session are restored automatically. No user action required.
 
 ## Acceptance Criteria
 
-1. On load, once `isReady` is true and `userId` is known, if `participants[userId]` exists in the SharedMap, restore `selected` to that `categoryName`.
-2. The restored category appears visually marked (same `active` class as a manual selection).
-3. No write to the SharedMap occurs during restoration.
-4. If no entry exists for the current user, the panel shows with no selection (current behaviour).
-5. If Live Share takes time to connect, restoration happens as soon as `isReady` becomes true.
+- [ ] On side panel reopen, all previously assigned categories are shown for each participant
+- [ ] No unnecessary state writes on restore
+
+## Implementation Note
+
+`localStorage` key is `meetburn-${meetingId}` where `meetingId` comes from `app.getContext().meeting.id`. Fallback: `meetburn-default` when outside Teams.

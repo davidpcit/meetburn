@@ -4,88 +4,69 @@
 
 MeetBurn is a Microsoft Teams Meeting App (tab extension) with two views:
 
-1. **Side Panel** — per-participant, rendered in each user's Teams client; used to select a professional category.
-2. **Meeting Stage** — shared projection via "share to stage"; shows the live cost counter to all attendees.
+1. **Side Panel** — opened by the organizer; polls meeting participants and lets the organizer assign a professional category to each person.
+2. **Meeting Stage** — optional shared projection; shows the live cost counter driven by the organizer's local state.
 
-Both views are served from the same React Single Page Application. The active view is determined at runtime from Teams context or a `?view=` query parameter.
+Both views are served from the same React SPA. The active view is determined at runtime from Teams context or a `?view=` query parameter.
 
 ## Tech Stack
 
 | Layer | Technology | Rationale |
 |---|---|---|
 | UI Framework | React 18 + TypeScript | Standard for Teams Toolkit tab apps |
-| Build Tool | Vite 5 | Fast HMR, native ESM, smaller bundles than CRA |
-| Real-time Sync | Live Share SDK v1 + Fluid Framework v1 | Native Teams meeting sync, no backend required |
-| Teams Integration | Teams JS SDK v2 | Frame context detection, shareAppContentToStage |
-| Styling | Plain CSS (custom) | No external UI library dependency for this PoC |
-| Packaging | Teams Toolkit v5 | Manifest generation, local dev HTTPS, app upload |
+| Build Tool | Vite 5 | Fast HMR, native ESM, smaller bundles |
+| State sync (side panel ↔ stage) | localStorage + BroadcastChannel | Same-origin, zero-latency, no backend required |
+| Teams Integration | Teams JS SDK v2 | Frame context detection, getParticipants, shareAppContentToStage |
+| Styling | Plain CSS (custom) | No external UI library dependency |
+| Packaging | Teams Toolkit v5 / M365 Agents Toolkit | Manifest generation, local dev HTTPS, app upload |
 
 ## Deployment & Runtime Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        DEV LAPTOP                               │
-│                                                                 │
-│  VS Code                                                        │
-│  ├── M365 Agents Toolkit  ──────────────────────────────────┐  │
-│  │   └── Publish to Org                                     │  │
-│  └── vercel --prod  ────────────────────────────────────┐   │  │
-└────────────────────────────────────────────────────────│───│──┘
-                                                         │   │
-                    ┌────────────────────────────────────┘   │
-                    │                                         │
-                    ▼                                         ▼
-         ┌──────────────────┐                   ┌─────────────────────────┐
-         │     VERCEL       │                   │  TEAMS DEVELOPER PORTAL │
-         │                  │                   │  (admin.teams.microsoft) │
-         │  meet-burn       │                   │                         │
-         │  .vercel.app     │                   │  MeetBurn (tenant catalog│
-         │                  │                   │  — requires admin approval)
-         │  React SPA       │                   └────────────┬────────────┘
-         │  (static)        │                                │ app approved
-         └────────┬─────────┘                                │
-                  │                                          ▼
-                  │  serves app (iframe)    ┌────────────────────────────┐
-                  │◄────────────────────────│     TEAMS (meeting)        │
-                  │                         │                            │
-                  │   PC Participant 1      │        PC Participant 2    │
-                  │  ┌──────────────────┐   │       ┌──────────────────┐ │
-                  │  │  Side Panel      │   │       │  Side Panel      │ │
-                  │  │  iframe →        │   │       │  iframe →        │ │
-                  │  │  meet-burn       │   │       │  meet-burn       │ │
-                  │  │  .vercel.app     │   │       │  .vercel.app     │ │
-                  │  │                  │   │       │                  │ │
-                  │  │  Select category │   │       │  Select category │ │
-                  │  └────────┬─────────┘   │       └────────┬─────────┘ │
-                  │           │             │                │           │
-                  │           └──────────┬──┴────────────────┘           │
-                  │                      │ SharedMap (set / valueChanged) │
-                  │                      ▼                               │
-                  │           ┌─────────────────────┐                   │
-                  │           │   LIVE SHARE SDK    │                   │
-                  │           │  (Fluid Framework)  │◄── Microsoft      │
-                  │           │                     │    Fluid Relay     │
-                  │           │  participantsMap    │    (Microsoft cloud│
-                  │           │  metaMap            │    — no cost)      │
-                  │           └──────────┬──────────┘                   │
-                  │                      │ real-time sync                │
-                  │                      ▼                               │
-                  │           ┌─────────────────────┐                   │
-                  │           │  Meeting Stage      │                   │
-                  │           │  (shared screen)    │                   │
-                  │           │                     │                   │
-                  │           │  0.00 € counter     │                   │
-                  │           │  participants table  │                   │
-                  │           └─────────────────────┘                   │
-                  │                                                      │
-                  └──────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        DEV LAPTOP                            │
+│  M365 Agents Toolkit → Publish to Org                        │
+│  vercel --prod        → deploy static SPA                    │
+└──────────────────────────────────────────────────────────────┘
+                    │                         │
+                    ▼                         ▼
+         ┌──────────────────┐   ┌─────────────────────────┐
+         │     VERCEL       │   │  TEAMS DEVELOPER PORTAL │
+         │  meet-burn       │   │  MeetBurn (tenant catalog│
+         │  .vercel.app     │   │  — requires admin approval)
+         │  React SPA       │   └────────────┬────────────┘
+         │  (static)        │                │ app approved
+         └────────┬─────────┘                │
+                  │  serves app (iframe)     ▼
+                  │◄──────────────  ┌────────────────────┐
+                  │                 │   TEAMS (meeting)  │
+                  │                 │                    │
+                  │  ORGANIZER      │  OTHER PARTICIPANTS│
+                  │  ┌───────────┐  │  (no app needed)   │
+                  │  │Side Panel │  │                    │
+                  │  │           │  │                    │
+                  │  │getParticip│  │                    │
+                  │  │ants() ←───┼──┤ Teams Participants │
+                  │  │           │  │ API                │
+                  │  │useState   │  │                    │
+                  │  │(local)    │  │                    │
+                  │  └─────┬─────┘  │                    │
+                  │        │ localStorage +               │
+                  │        │ BroadcastChannel             │
+                  │        ▼                              │
+                  │  ┌───────────┐                        │
+                  │  │  Stage    │  ← projected to        │
+                  │  │ (optional)│    shared screen       │
+                  │  └───────────┘                        │
+                  └───────────────────────────────────────┘
 ```
 
 **Key points:**
-- Vercel only serves static HTML/JS — no backend logic
-- State sync happens entirely between Teams clients ↔ Microsoft Fluid Relay
-- The dev laptop is only needed to publish new versions; participants need nothing installed
-- RSC permissions required in manifest: `MeetingStage.Write.Chat`, `OnlineMeetingParticipant.Read.Chat`, `LiveShareSession.ReadWrite.Chat`
+- Vercel serves static HTML/JS — no backend logic
+- State lives entirely in the organizer's browser (localStorage)
+- Side panel and stage share state via BroadcastChannel (same-origin iframes, same Teams window)
+- No Live Share, no Fluid Relay, no RSC sync permissions needed
+- RSC permissions required in manifest: `MeetingStage.Write.Chat`, `OnlineMeetingParticipant.Read.Chat`
 
 ## Architectural Layers
 
@@ -97,70 +78,71 @@ Both views are served from the same React Single Page Application. The active vi
 │              App.tsx (View Router)               │
 │  Reads Teams frame context or ?view= param       │
 ├─────────────────────────────────────────────────┤
-│         useLiveShare Hook (State Layer)          │
-│  SharedMap (participants) + SharedMap (meta)     │
+│         useMeetingState Hook (State Layer)       │
+│  useState + localStorage + BroadcastChannel      │
 ├─────────────────────────────────────────────────┤
-│    Live Share SDK   │   Teams JS SDK v2          │
-│  Fluid Framework   │  app / meeting / pages      │
+│    Teams JS SDK v2                               │
+│  app / meeting / pages                           │
 └─────────────────────────────────────────────────┘
 ```
 
 ## Component Interactions
 
 ```
-Participant A (Teams client)          Participant B (Teams client)
-┌─────────────────────┐               ┌─────────────────────┐
-│  SidePanel          │               │  SidePanel          │
-│  → selects category │               │  → selects category │
-│  → upsertParticipant│               │  → upsertParticipant│
-└────────┬────────────┘               └──────────┬──────────┘
-         │ SharedMap.set(userId, data)            │
-         ▼                                        ▼
-    ┌─────────────────────────────────────────────────┐
-    │           Live Share / Fluid Container           │
-    │   participantsMap: SharedMap<userId, Data>       │
-    │   metaMap: SharedMap<"meetingStart", timestamp>  │
-    └──────────────────────┬──────────────────────────┘
-                           │ valueChanged events
-                           ▼
-              ┌─────────────────────────┐
-              │  MeetingStage (shared)  │
-              │  reads all entries      │
-              │  sums costPerHour       │
-              │  calculates total cost  │
-              └─────────────────────────┘
+Organizer (Teams client)
+┌──────────────────────────────────────────────┐
+│  SidePanel                                   │
+│  ┌────────────────────────────────────────┐  │
+│  │ meeting.getParticipants() every 15s    │  │
+│  │ → participants list                    │  │
+│  │                                        │  │
+│  │ organizer assigns category per person  │  │
+│  │ → useMeetingState (local useState)     │  │
+│  │   writes to localStorage[meetingId]    │  │
+│  └───────────────────┬────────────────────┘  │
+│                      │ BroadcastChannel.post  │
+│                      ▼                        │
+│  ┌────────────────────────────────────────┐  │
+│  │  MeetingStage (projected to screen)   │  │
+│  │  reads localStorage[meetingId]        │  │
+│  │  subscribes to BroadcastChannel       │  │
+│  │  → renders cost counter               │  │
+│  └────────────────────────────────────────┘  │
+└──────────────────────────────────────────────┘
 ```
 
 ## Data Flow
 
-1. **App init**: `App.tsx` calls `app.getContext()` to detect `frameContext` → routes to correct view.
-2. **Live Share connect**: `useLiveShare` hook calls `client.joinContainer(schema)` → connects to Fluid container scoped to the meeting.
-3. **Category selection**: `SidePanel` calls `upsertParticipant(userId, data)` → writes to `participantsMap` SharedMap.
-4. **Real-time update**: Fluid emits `valueChanged` on `participantsMap` → all connected clients re-render with new state.
-5. **Cost calculation**: `totalCostPerHour` = sum of all `costPerHour` values in the map; `totalCost` = `totalCostPerHour × elapsedHours`.
-6. **Meeting clock**: `meetingStartMs` is set once (first writer wins) in `metaMap`; all clients read it for a synchronized elapsed time.
+1. **App init**: `App.tsx` calls `app.getContext()` → detects `frameContext` → routes to Side Panel or Stage.
+2. **Participant poll**: `useMeetingParticipants` calls `meeting.getParticipants()` every 15 s → returns current attendees.
+3. **Self-registration**: If the organizer is alone, `app.getContext()` provides their own ID and name.
+4. **Category assignment**: Organizer selects a category per participant → `useMeetingState` updates local state → serialises to `localStorage[meetingId]`.
+5. **Stage sync**: `MeetingStage` listens to `BroadcastChannel` messages → re-renders on every state change from the side panel.
+6. **Cost calculation**: `totalCostPerHour` = sum of active participants' `costPerHour`; `totalCost` = `totalCostPerHour × elapsedHours` since meeting start.
 
 ## Key Data Structures
 
 ```typescript
-// In-memory only (Fluid SharedMap), no persistence
+// Local state only — no network, no shared container
 interface ParticipantData {
-  displayName: string;   // Teams display name
+  displayName: string;   // from meeting.getParticipants() or app.getContext()
   categoryName: string;  // e.g. "Project Manager"
   costPerHour: number;   // e.g. 65
+  active: boolean;       // true while participant is in the meeting
 }
 
-// participantsMap: Map<userId: string, ParticipantData>
-// metaMap:        Map<"meetingStart", timestamp: number>
+// localStorage key: `meetburn-${meetingId}`
+// BroadcastChannel name: `meetburn-${meetingId}`
+// Value: { participants: Record<userId, ParticipantData>, meetingStartMs: number }
 ```
 
 ## Key Constraints
 
-- **No database**: All state is stored in Live Share (Fluid) containers, ephemeral for the meeting session.
+- **No database**: State is stored in the organizer's localStorage, ephemeral for the browser session.
 - **No backend server**: Static SPA served from any HTTPS host (or localhost:53000 during dev).
-- **HTTPS required**: Teams rejects tab content served over HTTP. `@vitejs/plugin-basic-ssl` provides self-signed cert for local dev.
-- **iframe isolation**: Side panel and stage run in separate iframes; they share state only via Live Share.
-- **Teams-only sync**: `LiveShareClient` requires Teams context. Outside Teams, `TestLiveShareHost` is used (no cross-client sync).
+- **HTTPS required**: Teams rejects tab content served over HTTP.
+- **Same-origin sync**: Side panel and stage must share the same origin for localStorage and BroadcastChannel to work. Both load from `meet-burn.vercel.app`.
+- **Single organizer**: Only one instance manages participant state. If two people open the side panel simultaneously, they have independent views.
 
 ## Project Structure
 
@@ -169,22 +151,21 @@ MeetBurn/
 ├── docs/                      # Product & architecture docs (this file)
 │   └── decisions/             # ADRs
 ├── ai-specs/
-│   └── specs/                 # Feature specifications
-│   └── changes/               # User stories
+│   └── changes/               # Feature specs and user stories
 ├── src/
 │   ├── types.ts               # Shared types and CATEGORIES constant
 │   ├── main.tsx               # React entry point
 │   ├── App.tsx                # View router
 │   ├── App.css                # All styles (side panel + stage)
 │   ├── hooks/
-│   │   └── useLiveShare.ts    # Live Share state hook
+│   │   ├── useMeetingState.ts     # Local state + localStorage + BroadcastChannel
+│   │   └── useMeetingParticipants.ts  # Teams participant polling
 │   └── components/
 │       ├── Config.tsx         # Teams tab configuration page
-│       ├── SidePanel.tsx      # Per-participant category selector
-│       └── MeetingStage.tsx   # Shared cost counter
+│       ├── SidePanel.tsx      # Organizer UI — participant list + category assignment
+│       └── MeetingStage.tsx   # Shared cost counter (reads from BroadcastChannel)
 ├── appPackage/
 │   └── manifest.json          # Teams app manifest
 ├── teamsapp.yml               # Teams Toolkit provision/deploy
-├── teamsapp.local.yml         # Local dev workflow
 └── vite.config.ts             # Build config with HTTPS
 ```

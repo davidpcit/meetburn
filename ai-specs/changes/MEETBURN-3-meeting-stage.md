@@ -2,63 +2,65 @@
 
 ## Overview
 
-The meeting stage is a shared view projected to all meeting participants. It shows a live running cost counter that updates in real time as participants select their categories.
+The meeting stage is an optional shared view the organizer projects to all attendees. It shows a live running cost counter driven by the organizer's local state, communicated to the stage via BroadcastChannel (no network hop).
 
 ## User Story
 
-**As a** meeting participant viewing the shared stage,
-**I want to** see the accumulated cost and current burn rate of the meeting in real time,
-**So that** the team has a shared sense of the financial impact and can make informed decisions about meeting duration.
+**As a** meeting organizer,
+**I want to** project the accumulated cost counter to the shared screen,
+**So that** all attendees see the financial impact of the meeting in real time.
 
 ## Acceptance Criteria
 
-**AC1: Elapsed time is synchronized**
-- Given the stage loads
-- When `meetingStartMs` is read from `metaMap`
-- Then the timer counts up from that timestamp (not from when the stage was opened)
-- And all participants see the same elapsed time
+**AC1: Stage reads state from BroadcastChannel / localStorage**
+- Given the organizer's side panel has participant data
+- When the stage loads
+- Then it reads the latest state from `localStorage[meetingId]`
+- And subscribes to `BroadcastChannel(meetingId)` for live updates
 
-**AC2: Total cost per hour reflects all participants**
-- Given participants A, B, C have selected categories
+**AC2: Elapsed time starts from meeting start**
+- Given `meetingStartMs` is stored in the organizer's state
 - When the stage renders
-- Then `totalCostPerHour` = sum of all `costPerHour` values in `participantsMap`
+- Then the timer counts up from that timestamp
 
-**AC3: Accumulated cost updates every second**
+**AC3: Total cost per hour reflects active participants**
+- Given the organizer has assigned categories to participants
+- When the stage renders
+- Then `totalCostPerHour` = sum of active participants' `costPerHour`
+
+**AC4: Accumulated cost updates every second**
 - Given `totalCostPerHour` and `elapsedHours` are known
 - Then `totalCost = totalCostPerHour × elapsedHours` is recalculated every second
-- And displayed prominently in the UI
 
-**AC4: Participant table shows breakdown**
-- Given participants have selected categories
+**AC5: Participant table shows breakdown**
+- Given participants have been assigned categories
 - When the stage renders
 - Then a table shows each participant's display name, category, and rate
 
-**AC5: Empty state is handled**
-- Given no participant has selected a category yet
+**AC6: Empty state is handled**
+- Given no participant has been assigned a category yet
 - When the stage renders
-- Then a waiting message is shown instead of an empty table
+- Then a waiting message is shown
 
-**AC6: Stage connects independently to Live Share**
-- Given the stage runs in a separate iframe from the side panel
-- When it loads
-- Then it independently calls `useLiveShare` and connects to the same Fluid container
-- And receives the same state as the side panel
+**AC7: Stop sharing button**
+- Given the stage is projected
+- When the organizer clicks "Dejar de compartir"
+- Then `meeting.stopSharingAppContentToStage()` is called
 
 ## Displayed Values
 
 | Value | Formula | Display |
 |---|---|---|
 | Elapsed time | `(now - meetingStartMs) / 1000` seconds | `HH:MM:SS` monospace |
-| Burn rate | `sum(participants[*].costPerHour)` | `{n} €/hora` |
+| Burn rate | `sum(active participants costPerHour)` | `{n} €/h` |
 | Accumulated cost | `burnRate × (elapsedMs / 3_600_000)` | `{n.nn} €` — 2 decimal places |
 
 ## Components Involved
 
 - `src/components/MeetingStage.tsx` — renders the UI
-- `src/hooks/useLiveShare.ts` — provides `participants`, `totalCostPerHour`, `meetingStartMs`
+- `src/hooks/useMeetingState.ts` — reads state from BroadcastChannel / localStorage
 
 ## Non-Functional Requirements
 
-- Timer updates every 1 second (`setInterval` with 1000ms).
-- Interval is cleared on component unmount.
-- Stage should be readable on a large screen projected to a room (large font sizes, high contrast).
+- Timer updates every 1 second.
+- Stage should be readable on a large projected screen (large fonts, high contrast).

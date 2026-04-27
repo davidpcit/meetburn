@@ -7,10 +7,15 @@ As a meeting organizer, I want to see the real name of each participant in the s
 ## Acceptance Criteria
 
 1. The Meeting Stage table shows each participant's real Teams display name.
-2. If `app.getContext()` resolves after category selection, the SharedMap entry is updated automatically with the real name.
-3. The fallback `"Participante"` is never written to the SharedMap when a real name is available.
-4. Works for both manual selection and auto-selection via job title.
+2. Display name comes from `meeting.getParticipants()` for all participants.
+3. For the organizer themselves (or when alone), name comes from `app.getContext()` — trying `displayName`, `loginHint`, `userPrincipalName` in order, then the SSO token `name` claim as final fallback.
+4. The GUID is never shown when any name source is available.
 
-## Root Cause
+## Implementation Note
 
-`upsertParticipant` was called before `app.getContext()` resolved, writing the fallback `"Participante"` to the SharedMap. The fix is a `useEffect` that re-calls `upsertParticipant` whenever `displayName` changes and a category is already selected.
+Name resolution order in `useMeetingState` / `SidePanel`:
+1. `ctx.user.displayName`
+2. `ctx.user.loginHint` (typically the email)
+3. `ctx.user.userPrincipalName`
+4. SSO token `name` claim (decoded client-side, no server call)
+5. GUID as last resort
