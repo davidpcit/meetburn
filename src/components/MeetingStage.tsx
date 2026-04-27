@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { app, meeting } from "@microsoft/teams-js";
-import { useLiveShare } from "../hooks/useLiveShare";
+import { useMeetingState } from "../hooks/useMeetingState";
 
 function formatHMS(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600).toString().padStart(2, "0");
@@ -10,7 +10,7 @@ function formatHMS(totalSeconds: number): string {
 }
 
 export function MeetingStage() {
-  const { participants, meetingStartMs, isReady, liveShareError } = useLiveShare();
+  const { participants, meetingStartMs, isReady } = useMeetingState();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -84,13 +84,8 @@ export function MeetingStage() {
         Dejar de compartir
       </button>
 
-      {!isReady && !liveShareError && (
-        <div className="stage-connecting">Conectando a Live Share…</div>
-      )}
-      {liveShareError && (
-        <div className="stage-connecting" style={{ color: "#ff6b6b", fontSize: "0.8rem", padding: "0.5rem 1rem" }}>
-          ⚠️ {liveShareError}
-        </div>
+      {!isReady && (
+        <div className="stage-connecting">Cargando…</div>
       )}
     </div>
   );

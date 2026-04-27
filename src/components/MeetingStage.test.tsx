@@ -21,8 +21,8 @@ const mockLiveShareState = vi.hoisted(() => ({
   liveShareError: null as string | null,
 }));
 
-vi.mock("../hooks/useLiveShare", () => ({
-  useLiveShare: () => mockLiveShareState,
+vi.mock("../hooks/useMeetingState", () => ({
+  useMeetingState: () => mockLiveShareState,
 }));
 
 // --- Tests ---

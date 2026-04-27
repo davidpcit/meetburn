@@ -1,6 +1,6 @@
 {
   "name": "meetburn",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,10 +12,8 @@
     "version": "node scripts/sync-version.js"
   },
   "dependencies": {
-    "@microsoft/live-share": "^1.0.4",
     "@microsoft/teams-js": "^2.22.0",
     "@vercel/node": "^5.7.13",
-    "fluid-framework": "^1.3.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
