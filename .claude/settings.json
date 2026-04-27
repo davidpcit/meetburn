@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp -r /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/.claude/agents /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/.claude/agents)",
+      "Bash(cp -r /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/.claude/commands /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/.claude/commands)",
+      "Bash(cp -r /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/.cursor /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/.cursor)",
+      "Bash(cp -r /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/ai-specs/.agents /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/.agents)",
+      "Bash(cp -r /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/ai-specs/.commands /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/.commands)",
+      "Bash(rm -rf /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/.claude)",
+      "Bash(rm -rf /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/ai-specs/.git)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(grep -n \"static\\\\|create\\\\|getInstance\" /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/node_modules/@microsoft/live-share/bin/TestLiveShareHost.d.ts echo \"---\" grep -n \"TeamsLiveShareHost\\\\|class.*Host\" /c/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn/node_modules/@microsoft/live-share/bin/index.d.ts)",
+      "Bash(xargs grep *)",
+      "Bash(powershell -Command ' *)",
+      "Bash(powershell -command \"[System.Guid]::NewGuid\\(\\).ToString\\(\\)\")",
+      "Bash(powershell -command ' *)",
+      "Bash(vercel --prod)",
+      "Bash(npx vitest *)",
+      "Bash(node scripts/sync-version.js)",
+      "Bash(npm version *)",
+      "Bash(gh --version)"
+    ],
+    "additionalDirectories": [
+      "C:\\DPCLOCALFILES\\03_SCRIPTS\\SDD_PoCs\\MeetBurn"
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.5",
+  "id": "${{TEAMS_APP_ID}}",
+  "developer": {
+    "name": "MeetBurn",
+    "websiteUrl": "https://${{TAB_DOMAIN}}",
+    "privacyUrl": "https://${{TAB_DOMAIN}}/privacy",
+    "termsOfUseUrl": "https://${{TAB_DOMAIN}}/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "MeetBurn",
+    "full": "MeetBurn — Meeting Cost Tracker"
+  },
+  "description": {
+    "short": "¿Cuánto cuesta esta reunión?",
+    "full": "MeetBurn muestra en tiempo real el coste acumulado de una reunión según la categoría profesional de cada participante."
+  },
+  "accentColor": "#6264A7",
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://${{TAB_DOMAIN}}/index.html?view=config",
+      "canUpdateConfiguration": false,
+      "scopes": [
+        "groupchat"
+      ],
+      "context": [
+        "meetingSidePanel",
+        "meetingStage"
+      ]
+    }
+  ],
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [
+        {
+          "name": "MeetingStage.Write.Chat",
+          "type": "Delegated"
+        },
+        {
+          "name": "OnlineMeetingParticipant.Read.Chat",
+          "type": "Delegated"
+        },
+        {
+          "name": "LiveShareSession.ReadWrite.Chat",
+          "type": "Delegated"
+        }
+      ]
+    }
+  },
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "${{TAB_DOMAIN}}"
+  ]
+}

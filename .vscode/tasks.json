@@ -1,0 +1,75 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Teams App Locally",
+      "dependsOn": [
+        "Validate prerequisites",
+        "Start local tunnel",
+        "Provision",
+        "Deploy",
+        "Start application"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "Validate prerequisites",
+      "type": "teamsfx",
+      "command": "debug-check-prerequisites",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "args": {
+        "prerequisites": ["nodejs", "m365Account", "portOccupancy"],
+        "portOccupancy": [53000]
+      }
+    },
+    {
+      "label": "Start local tunnel",
+      "type": "teamsfx",
+      "command": "debug-start-local-tunnel",
+      "args": {
+        "type": "dev-tunnel",
+        "ports": [
+          {
+            "portNumber": 53000,
+            "protocol": "https",
+            "access": "public",
+            "writeToEnvironmentFile": {
+              "domain": "TAB_DOMAIN",
+              "endpoint": "TAB_ENDPOINT"
+            }
+          }
+        ],
+        "env": "local"
+      },
+      "isBackground": true,
+      "problemMatcher": "$teamsfx-local-tunnel-watch"
+    },
+    {
+      "label": "Provision",
+      "type": "teamsfx",
+      "command": "provision",
+      "args": { "env": "local" }
+    },
+    {
+      "label": "Deploy",
+      "type": "teamsfx",
+      "command": "deploy",
+      "args": { "env": "local" }
+    },
+    {
+      "label": "Start application",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": {
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*ready in.*"
+        }
+      }
+    }
+  ]
+}

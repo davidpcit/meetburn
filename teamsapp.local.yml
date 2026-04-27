@@ -1,0 +1,52 @@
+version: 1.0.0
+
+environmentFolderPath: ./env
+
+provision:
+  - uses: devTool/install
+    with:
+      devCert:
+        trust: true
+    writeToEnvironmentFile:
+      sslCertFile: SSL_CRT_FILE
+      sslKeyFile: SSL_KEY_FILE
+
+  - uses: devTunnel/create
+    with:
+      ports:
+        - port: 53000
+          protocol: https
+          access: public
+    writeToEnvironmentFile:
+      domain: TAB_DOMAIN
+      endpoint: TAB_ENDPOINT
+      id: TUNNEL_ID
+
+  - uses: teamsApp/create
+    with:
+      name: MeetBurn-local
+    writeToEnvironmentFile:
+      teamsAppId: TEAMS_APP_ID
+
+  - uses: teamsApp/zipAppPackage
+    with:
+      manifestPath: ./appPackage/manifest.json
+      outputZipPath: ./appPackage/build/appPackage.local.zip
+      outputJsonPath: ./appPackage/build/manifest.local.json
+
+  - uses: teamsApp/validateAppPackage
+    with:
+      appPackagePath: ./appPackage/build/appPackage.local.zip
+
+  - uses: teamsApp/update
+    with:
+      appPackagePath: ./appPackage/build/appPackage.local.zip
+
+deploy:
+  - uses: script
+    with:
+      run: npm install
+
+  - uses: script
+    with:
+      run: npm run dev
