@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { app, meeting } from "@microsoft/teams-js";
+import { app, authentication, meeting } from "@microsoft/teams-js";
 import { CATEGORIES } from "../types";
 import { useLiveShare } from "../hooks/useLiveShare";
 import { useMeetingParticipants } from "../hooks/useMeetingParticipants";
@@ -23,10 +23,21 @@ export function SidePanel() {
 
   useEffect(() => {
     app.getContext()
-      .then((ctx) => {
+      .then(async (ctx) => {
         const u = ctx.user as { id?: string; displayName?: string; loginHint?: string; userPrincipalName?: string } | undefined;
         setCurrentUserId(u?.id ?? `anon-${instanceId}`);
-        setCurrentUserDisplayName(u?.displayName ?? u?.loginHint ?? u?.userPrincipalName ?? "");
+
+        // Try context fields first; fall back to decoding the SSO token's `name` claim
+        const nameFromCtx = u?.displayName ?? u?.loginHint ?? u?.userPrincipalName ?? "";
+        if (nameFromCtx) { setCurrentUserDisplayName(nameFromCtx); return; }
+
+        try {
+          const token = await authentication.getAuthToken();
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          setCurrentUserDisplayName(payload.name ?? payload.preferred_username ?? "");
+        } catch {
+          // no name available — will show GUID as last resort
+        }
       })
       .catch(() => setCurrentUserId(`anon-${instanceId}`));
   }, [instanceId]);
