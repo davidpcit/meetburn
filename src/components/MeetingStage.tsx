@@ -10,7 +10,7 @@ function formatHMS(totalSeconds: number): string {
 }
 
 export function MeetingStage() {
-  const { participants, totalCostPerHour, meetingStartMs, isReady, liveShareError } = useLiveShare();
+  const { participants, meetingStartMs, isReady, liveShareError } = useLiveShare();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -21,10 +21,12 @@ export function MeetingStage() {
 
   const elapsedMs = nowMs - meetingStartMs;
   const elapsedSec = Math.max(0, Math.floor(elapsedMs / 1000));
-  const elapsedHours = elapsedMs / 3_600_000;
-  const totalCost = totalCostPerHour * elapsedHours;
+  const elapsedHours = Math.max(0, elapsedMs / 3_600_000);
 
-  const entries = Object.entries(participants);
+  const activeEntries = Object.entries(participants).filter(([, p]) => p.active);
+  const activeCostPerHour = activeEntries.reduce((sum, [, p]) => sum + p.costPerHour, 0);
+  const totalCost = activeCostPerHour * elapsedHours;
+  const allEntries = Object.entries(participants);
 
   return (
     <div className="stage">
@@ -45,9 +47,9 @@ export function MeetingStage() {
         <div className="stage-divider" />
 
         <div className="stage-rate-block">
-          <div className="stage-rate">{totalCostPerHour} €/h</div>
+          <div className="stage-rate">{activeCostPerHour} €/h</div>
           <div className="stage-rate-label">
-            {entries.length} participante{entries.length !== 1 ? "s" : ""}
+            {activeEntries.length} participante{activeEntries.length !== 1 ? "s" : ""}
           </div>
         </div>
       </main>
@@ -58,15 +60,15 @@ export function MeetingStage() {
           <span>Categoría</span>
           <span>€/h</span>
         </div>
-        {entries.map(([id, p]) => (
-          <div key={id} className="stage-table-row">
-            <span className="row-name">{p.displayName}</span>
+        {allEntries.map(([id, p]) => (
+          <div key={id} className={`stage-table-row${p.active ? "" : " row-inactive"}`}>
+            <span className="row-name">{p.displayName}{!p.active && <span style={{ opacity: 0.5 }}> · desconectado</span>}</span>
             <span className="row-cat">{p.categoryName}</span>
-            <span className="row-cost">{p.costPerHour}</span>
+            <span className="row-cost">{p.active ? p.costPerHour : "—"}</span>
           </div>
         ))}
-        {entries.length === 0 && (
-          <div className="stage-empty">Esperando a que los participantes seleccionen su categoría…</div>
+        {allEntries.length === 0 && (
+          <div className="stage-empty">Esperando participantes…</div>
         )}
       </section>
 

@@ -1,15 +1,18 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { app, meeting } from "@microsoft/teams-js";
 import { CATEGORIES } from "../types";
 import { useLiveShare } from "../hooks/useLiveShare";
-import { useJobTitle } from "../hooks/useJobTitle";
+import { useMeetingParticipants } from "../hooks/useMeetingParticipants";
+import { DebugPanel } from "./DebugPanel";
+
+const DEFAULT_CATEGORY = CATEGORIES.find((c) => c.name === "Project Manager")!;
+const DEBUG = new URLSearchParams(window.location.search).has("debug");
 
 export function SidePanel() {
   const instanceId = useId();
-  const [userId, setUserId] = useState<string>("");
-  const [displayName, setDisplayName] = useState<string>("");
-  const [selected, setSelected] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const { upsertParticipant, participants, totalCostPerHour, meetingStartMs, isReady, liveShareError } = useLiveShare();
+  const teamsParticipants = useMeetingParticipants();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -17,66 +20,44 @@ export function SidePanel() {
     return () => clearInterval(id);
   }, []);
 
-  const accumulatedCost = totalCostPerHour * Math.max(0, (nowMs - meetingStartMs) / 3_600_000);
-  const { suggestedCategory } = useJobTitle();
-
   useEffect(() => {
-    app
-      .getContext()
-      .then((ctx) => {
-        setUserId(ctx.user?.id ?? `anon-${instanceId}`);
-        setDisplayName(ctx.user?.displayName || ctx.user?.userPrincipalName || "");
-      })
-      .catch(() => {
-        setUserId(`anon-${instanceId}`);
-        setDisplayName("Participante Local");
-      });
+    app.getContext()
+      .then((ctx) => setCurrentUserId(ctx.user?.id ?? `anon-${instanceId}`))
+      .catch(() => setCurrentUserId(`anon-${instanceId}`));
   }, [instanceId]);
 
-  const restoredRef = useRef(false);
-
-  // Restore selected category from SharedMap on reconnect (read-only)
+  // Sync Teams participant list → SharedMap
   useEffect(() => {
-    if (!isReady || !userId || selected) return;
-    const existing = participants[userId];
-    if (existing?.categoryName) {
-      restoredRef.current = true;
-      setSelected(existing.categoryName);
-    }
-  }, [isReady, userId, participants, selected]);
+    if (!isReady || teamsParticipants.length === 0) return;
+    const currentIds = new Set(teamsParticipants.map((p) => p.aadObjectId));
 
-  // Re-sync displayName to SharedMap when it resolves after selection (skip if restored)
-  useEffect(() => {
-    if (!displayName || !selected || !userId || !isReady) return;
-    if (restoredRef.current) { restoredRef.current = false; return; }
-    const cat = CATEGORIES.find((c) => c.name === selected);
-    if (cat) upsertParticipant(userId, { displayName, categoryName: cat.name, costPerHour: cat.costPerHour });
-  }, [displayName, selected, userId, isReady, upsertParticipant]);
-
-  // Auto-select when suggestion arrives and nothing is selected yet
-  useEffect(() => {
-    if (suggestedCategory && !selected && userId && isReady) {
-      const cat = CATEGORIES.find((c) => c.name === suggestedCategory);
-      if (cat) {
-        setSelected(cat.name);
-        upsertParticipant(userId, {
-          displayName: displayName || "Participante",
-          categoryName: cat.name,
-          costPerHour: cat.costPerHour,
+    // Add new participants with default category (don't overwrite existing)
+    teamsParticipants.forEach((tp) => {
+      if (!participants[tp.aadObjectId]) {
+        upsertParticipant(tp.aadObjectId, {
+          displayName: tp.displayName,
+          categoryName: DEFAULT_CATEGORY.name,
+          costPerHour: DEFAULT_CATEGORY.costPerHour,
+          active: true,
         });
+      } else if (!participants[tp.aadObjectId].active) {
+        // Reconnected — restore active
+        upsertParticipant(tp.aadObjectId, { ...participants[tp.aadObjectId], active: true });
       }
-    }
-  }, [suggestedCategory, selected, userId, isReady, displayName, upsertParticipant]);
+    });
 
-  const handleSelect = (name: string, cost: number) => {
-    setSelected(name);
-    if (userId && isReady) {
-      upsertParticipant(userId, {
-        displayName: displayName || "Participante",
-        categoryName: name,
-        costPerHour: cost,
-      });
-    }
+    // Mark departed participants inactive
+    Object.entries(participants).forEach(([id, p]) => {
+      if (p.active && !currentIds.has(id)) {
+        upsertParticipant(id, { ...p, active: false });
+      }
+    });
+  }, [teamsParticipants, isReady]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCategoryChange = (userId: string, categoryName: string) => {
+    const cat = CATEGORIES.find((c) => c.name === categoryName);
+    if (!cat || !participants[userId]) return;
+    upsertParticipant(userId, { ...participants[userId], categoryName: cat.name, costPerHour: cat.costPerHour });
   };
 
   const handleShareToStage = () => {
@@ -86,43 +67,46 @@ export function SidePanel() {
     );
   };
 
-  const participantCount = Object.keys(participants).length;
+  const activeCount = Object.values(participants).filter((p) => p.active).length;
+  const accumulatedCost = totalCostPerHour * Math.max(0, (nowMs - meetingStartMs) / 3_600_000);
 
   return (
     <div className="side-panel">
       <header className="sp-header">
         <span className="sp-logo">🔥</span>
-        <div>
-          <h1 className="sp-title">MeetBurn <span style={{ fontSize: "0.6rem", opacity: 0.5, fontWeight: "normal" }}>v{__APP_VERSION__}</span></h1>
-          {displayName && <p className="sp-user">Hola, <strong>{displayName}</strong></p>}
-        </div>
+        <h1 className="sp-title">MeetBurn <span style={{ fontSize: "0.6rem", opacity: 0.5, fontWeight: "normal" }}>v{__APP_VERSION__}</span></h1>
       </header>
 
-      <section className="sp-section">
+      <section className="sp-participant-list">
         <p className="sp-label">Selecciona tu categoría:</p>
-        <div className="sp-categories">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.name}
-              className={`cat-btn${selected === cat.name ? " active" : ""}`}
-              onClick={() => handleSelect(cat.name, cat.costPerHour)}
+        {Object.entries(participants).length === 0 && (
+          <p className="sp-empty">Esperando participantes…</p>
+        )}
+        {Object.entries(participants).map(([id, p]) => (
+          <div key={id} className={`sp-participant-row${p.active ? "" : " inactive"}`}>
+            <span className="sp-participant-name">
+              {p.displayName}
+              {id === currentUserId && <span className="sp-you"> (tú)</span>}
+              {!p.active && <span className="sp-disconnected"> · desconectado</span>}
+            </span>
+            <select
+              className="sp-category-select"
+              value={p.categoryName}
+              disabled={!p.active}
+              onChange={(e) => handleCategoryChange(id, e.target.value)}
             >
-              <span className="cat-name">
-                {cat.name}
-                {suggestedCategory === cat.name && selected !== cat.name && (
-                  <span style={{ fontSize: "0.6rem", marginLeft: "0.4rem", opacity: 0.7 }}>← tu cargo</span>
-                )}
-              </span>
-              <span className="cat-cost">{cat.costPerHour} €/h</span>
-            </button>
-          ))}
-        </div>
+              {CATEGORIES.map((cat) => (
+                <option key={cat.name} value={cat.name}>{cat.name} — {cat.costPerHour}€/h</option>
+              ))}
+            </select>
+          </div>
+        ))}
       </section>
 
       <section className="sp-summary">
         <div className="sp-stat">
           <span className="sp-stat-label">Participantes</span>
-          <span className="sp-stat-value">{participantCount}</span>
+          <span className="sp-stat-value">{activeCount}</span>
         </div>
         <div className="sp-stat sp-stat-main">
           <span className="sp-stat-label">Coste total</span>
@@ -135,18 +119,21 @@ export function SidePanel() {
         <span className="sp-accumulated-value">{accumulatedCost.toFixed(2)} €</span>
       </section>
 
-      <button
-        className="share-btn"
-        onClick={handleShareToStage}
-        disabled={participantCount === 0}
-      >
+      <button className="share-btn" onClick={handleShareToStage} disabled={activeCount === 0}>
         Proyectar en pantalla compartida →
       </button>
 
+      {DEBUG && (
+        <DebugPanel
+          participants={participants}
+          meetingStartMs={meetingStartMs}
+          nowMs={nowMs}
+          totalCost={accumulatedCost}
+        />
+      )}
+
       {!isReady && !liveShareError && (
-        <p className="sp-status">
-          <span className="sp-dot" /> Conectando a Live Share…
-        </p>
+        <p className="sp-status"><span className="sp-dot" /> Conectando a Live Share…</p>
       )}
       {liveShareError && (
         <p className="sp-status sp-error" style={{ color: "#ff6b6b", fontSize: "0.75rem", wordBreak: "break-word" }}>

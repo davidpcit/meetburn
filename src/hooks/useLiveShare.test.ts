@@ -70,6 +70,7 @@ describe("useLiveShare", () => {
         displayName: "Alice",
         categoryName: "Project Manager",
         costPerHour: 65,
+        active: true,
       });
     });
 
@@ -89,11 +90,13 @@ describe("useLiveShare", () => {
         displayName: "Alice",
         categoryName: "Project Manager",
         costPerHour: 65,
+        active: true,
       });
       result.current.upsertParticipant("user-2", {
         displayName: "Bob",
         categoryName: "Director",
         costPerHour: 90,
+        active: true,
       });
     });
 
@@ -117,11 +120,13 @@ describe("useLiveShare", () => {
         displayName: "Alice",
         categoryName: "Analista Junior",
         costPerHour: 25,
+        active: true,
       });
       result.current.upsertParticipant("user-1", {
         displayName: "Alice",
         categoryName: "C-Level",
         costPerHour: 130,
+        active: true,
       });
     });
 

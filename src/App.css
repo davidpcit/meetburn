@@ -91,6 +91,37 @@ body {
 }
 .cat-btn.active .cat-cost { opacity: .9; }
 
+/* Participant list */
+.sp-participant-list { display: flex; flex-direction: column; gap: 6px; }
+.sp-empty { font-size: 12px; color: #999; text-align: center; padding: 12px 0; }
+
+.sp-participant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+}
+.sp-participant-row.inactive { opacity: 0.45; background: #f8f8f8; }
+.sp-participant-name { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-you { font-size: 11px; color: #6264a7; font-weight: 400; }
+.sp-disconnected { font-size: 11px; color: #999; }
+
+.sp-category-select {
+  font-size: 11px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 3px 6px;
+  background: #fafafa;
+  cursor: pointer;
+  color: #242424;
+  flex-shrink: 0;
+}
+.sp-category-select:disabled { cursor: not-allowed; color: #999; }
+
 /* Summary */
 .sp-summary {
   display: flex;
