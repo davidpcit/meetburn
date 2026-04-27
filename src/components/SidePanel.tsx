@@ -25,32 +25,42 @@ export function SidePanel() {
     app.getContext()
       .then(async (ctx) => {
         const u = ctx.user as { id?: string; displayName?: string; loginHint?: string; userPrincipalName?: string } | undefined;
-        setCurrentUserId(u?.id ?? `anon-${instanceId}`);
+        const id = u?.id ?? `anon-${instanceId}`;
+        setCurrentUserId(id);
+        console.log("[MeetBurn] ctx.user fields:", JSON.stringify({ id: u?.id, displayName: u?.displayName, loginHint: u?.loginHint, userPrincipalName: u?.userPrincipalName }));
 
-        // Try context fields first; fall back to decoding the SSO token's `name` claim
-        const nameFromCtx = u?.displayName ?? u?.loginHint ?? u?.userPrincipalName ?? "";
+        const nameFromCtx = u?.displayName || u?.loginHint || u?.userPrincipalName || "";
         if (nameFromCtx) { setCurrentUserDisplayName(nameFromCtx); return; }
 
         try {
           const token = await authentication.getAuthToken();
           const payload = JSON.parse(atob(token.split(".")[1]));
-          setCurrentUserDisplayName(payload.name ?? payload.preferred_username ?? "");
-        } catch {
-          // no name available — will show GUID as last resort
+          const nameFromToken = payload.name || payload.preferred_username || "";
+          console.log("[MeetBurn] token name claim:", nameFromToken);
+          if (nameFromToken) setCurrentUserDisplayName(nameFromToken);
+        } catch (e) {
+          console.log("[MeetBurn] getAuthToken failed:", e);
         }
       })
       .catch(() => setCurrentUserId(`anon-${instanceId}`));
   }, [instanceId]);
 
-  // Self-registration: ensures current user appears in the list even when alone
+  // Self-registration: ensures current user appears in the list even when alone.
+  // Also updates the displayName when it resolves after the initial registration (race condition fix).
   useEffect(() => {
-    if (!isReady || !currentUserId || participants[currentUserId]) return;
-    upsertParticipant(currentUserId, {
-      displayName: currentUserDisplayName || currentUserId,
-      categoryName: DEFAULT_CATEGORY.name,
-      costPerHour: DEFAULT_CATEGORY.costPerHour,
-      active: true,
-    });
+    if (!isReady || !currentUserId) return;
+    const existing = participants[currentUserId];
+    if (!existing) {
+      upsertParticipant(currentUserId, {
+        displayName: currentUserDisplayName || currentUserId,
+        categoryName: DEFAULT_CATEGORY.name,
+        costPerHour: DEFAULT_CATEGORY.costPerHour,
+        active: true,
+      });
+    } else if (currentUserDisplayName && existing.displayName === currentUserId) {
+      // Name arrived after initial registration replaced the GUID fallback
+      upsertParticipant(currentUserId, { ...existing, displayName: currentUserDisplayName });
+    }
   }, [isReady, currentUserId, currentUserDisplayName, participants]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync Teams participant list → SharedMap
