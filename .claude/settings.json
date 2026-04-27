@@ -19,7 +19,20 @@
       "Bash(npx vitest *)",
       "Bash(node scripts/sync-version.js)",
       "Bash(npm version *)",
-      "Bash(gh --version)"
+      "Bash(gh --version)",
+      "Bash(npm run *)",
+      "Bash(vercel deploy *)",
+      "Bash(vercel inspect *)",
+      "Bash(vercel ls *)",
+      "Bash(vercel logs *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in d.items\\(\\) if k in ['name','version','scripts','dependencies','devDependencies']}, indent=2\\)\\)\")",
+      "Bash(git -C \"c:/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn\" config user.email)",
+      "Bash(git -C \"c:/DPCLOCALFILES/03_SCRIPTS/SDD_PoCs/MeetBurn\" log --format=\"%h %ae %s\" -5)",
+      "Bash(git config *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(npm test *)",
+      "Bash(git add *)"
     ],
     "additionalDirectories": [
       "C:\\DPCLOCALFILES\\03_SCRIPTS\\SDD_PoCs\\MeetBurn"

@@ -11,6 +11,7 @@ const DEBUG = new URLSearchParams(window.location.search).has("debug");
 export function SidePanel() {
   const instanceId = useId();
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>("");
   const { upsertParticipant, participants, totalCostPerHour, meetingStartMs, isReady, liveShareError } = useLiveShare();
   const teamsParticipants = useMeetingParticipants();
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -22,9 +23,23 @@ export function SidePanel() {
 
   useEffect(() => {
     app.getContext()
-      .then((ctx) => setCurrentUserId(ctx.user?.id ?? `anon-${instanceId}`))
+      .then((ctx) => {
+        setCurrentUserId(ctx.user?.id ?? `anon-${instanceId}`);
+        setCurrentUserDisplayName((ctx.user as { displayName?: string })?.displayName ?? "");
+      })
       .catch(() => setCurrentUserId(`anon-${instanceId}`));
   }, [instanceId]);
+
+  // Self-registration: ensures current user appears in the list even when alone
+  useEffect(() => {
+    if (!isReady || !currentUserId || participants[currentUserId]) return;
+    upsertParticipant(currentUserId, {
+      displayName: currentUserDisplayName || currentUserId,
+      categoryName: DEFAULT_CATEGORY.name,
+      costPerHour: DEFAULT_CATEGORY.costPerHour,
+      active: true,
+    });
+  }, [isReady, currentUserId, currentUserDisplayName, participants]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync Teams participant list → SharedMap
   useEffect(() => {

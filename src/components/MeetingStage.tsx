@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { app } from "@microsoft/teams-js";
+import { app, meeting } from "@microsoft/teams-js";
 import { useLiveShare } from "../hooks/useLiveShare";
 
 function formatHMS(totalSeconds: number): string {
@@ -27,6 +27,11 @@ export function MeetingStage() {
   const activeCostPerHour = activeEntries.reduce((sum, [, p]) => sum + p.costPerHour, 0);
   const totalCost = activeCostPerHour * elapsedHours;
   const allEntries = Object.entries(participants);
+
+  const handleStopSharing = () => {
+    (meeting as unknown as { stopSharingAppContentToStage: (cb: (err: unknown) => void) => void })
+      .stopSharingAppContentToStage((err) => { if (err) console.error("[MeetBurn] stopSharing:", err); });
+  };
 
   return (
     <div className="stage">
@@ -71,6 +76,13 @@ export function MeetingStage() {
           <div className="stage-empty">Esperando participantes…</div>
         )}
       </section>
+
+      <button
+        className="stage-stop-btn"
+        onClick={handleStopSharing}
+      >
+        Dejar de compartir
+      </button>
 
       {!isReady && !liveShareError && (
         <div className="stage-connecting">Conectando a Live Share…</div>

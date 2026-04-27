@@ -6,19 +6,22 @@ import { CATEGORIES } from "../types";
 // --- Mocks ---
 
 const mockUpsertParticipant = vi.fn();
-const mockMeetingStartMs = Date.now() - 60_000;
 
-const mockLiveShare = {
-  upsertParticipant: mockUpsertParticipant,
-  participants: {} as Record<string, { displayName: string; categoryName: string; costPerHour: number }>,
+const mockLiveShare = vi.hoisted(() => ({
+  upsertParticipant: vi.fn(),
+  participants: {} as Record<string, { displayName: string; categoryName: string; costPerHour: number; active: boolean }>,
   totalCostPerHour: 0,
-  meetingStartMs: mockMeetingStartMs,
+  meetingStartMs: Date.now() - 60_000,
   isReady: true,
-  liveShareError: null,
-};
+  liveShareError: null as string | null,
+}));
 
 vi.mock("../hooks/useLiveShare", () => ({
   useLiveShare: () => mockLiveShare,
+}));
+
+vi.mock("../hooks/useMeetingParticipants", () => ({
+  useMeetingParticipants: () => [],
 }));
 
 vi.mock("../hooks/useJobTitle", () => ({
@@ -31,7 +34,10 @@ vi.mock("@microsoft/teams-js", () => ({
       user: { id: "test-user-id", displayName: "Test User" },
     }),
   },
-  meeting: { shareAppContentToStage: vi.fn() },
+  meeting: {
+    shareAppContentToStage: vi.fn(),
+    stopSharingAppContentToStage: vi.fn(),
+  },
   authentication: { getAuthToken: vi.fn().mockRejectedValue(new Error("not in Teams")) },
 }));
 
@@ -39,44 +45,53 @@ vi.mock("@microsoft/teams-js", () => ({
 
 describe("SidePanel", () => {
   beforeEach(() => {
+    mockLiveShare.upsertParticipant = mockUpsertParticipant;
     mockUpsertParticipant.mockClear();
     mockLiveShare.participants = {};
+    mockLiveShare.isReady = true;
+    mockLiveShare.liveShareError = null;
   });
 
-  it("renders all category buttons", () => {
+  it("shows 'Esperando participantes' when no participants", () => {
     render(<SidePanel />);
-    CATEGORIES.forEach((cat) => {
-      expect(screen.getByText(cat.name)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/esperando participantes/i)).toBeInTheDocument();
   });
 
-  it("renders each category's cost", () => {
+  it("shows participant row when participant exists in SharedMap", () => {
+    mockLiveShare.participants = {
+      "u1": { displayName: "Alice", categoryName: "Director", costPerHour: 90, active: true },
+    };
     render(<SidePanel />);
-    CATEGORIES.forEach((cat) => {
-      expect(screen.getByText(`${cat.costPerHour} €/h`)).toBeInTheDocument();
-    });
+    expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 
-  it("clicking a category marks it active", () => {
+  it("labels current user with '(tú)'", async () => {
+    mockLiveShare.participants = {
+      "test-user-id": { displayName: "Test User", categoryName: "Director", costPerHour: 90, active: true },
+    };
+    await act(async () => { render(<SidePanel />); });
+    expect(screen.getByText("(tú)")).toBeInTheDocument();
+  });
+
+  it("shows 'desconectado' for inactive participant", () => {
+    mockLiveShare.participants = {
+      "u1": { displayName: "Alice", categoryName: "Director", costPerHour: 90, active: false },
+    };
     render(<SidePanel />);
-    const btn = screen.getByText("Project Manager").closest("button")!;
-    fireEvent.click(btn);
-    expect(btn).toHaveClass("active");
+    expect(screen.getByText(/desconectado/i)).toBeInTheDocument();
   });
 
-  it("only one category can be active at a time", () => {
-    render(<SidePanel />);
-    const first = screen.getByText("Analista Junior").closest("button")!;
-    const second = screen.getByText("Director").closest("button")!;
-    fireEvent.click(first);
-    fireEvent.click(second);
-    expect(first).not.toHaveClass("active");
-    expect(second).toHaveClass("active");
-  });
-
-  it("share button is disabled when no participants", () => {
+  it("share button is disabled when no active participants", () => {
     render(<SidePanel />);
     expect(screen.getByRole("button", { name: /proyectar/i })).toBeDisabled();
+  });
+
+  it("share button is enabled when there are active participants", () => {
+    mockLiveShare.participants = {
+      "u1": { displayName: "Alice", categoryName: "Director", costPerHour: 90, active: true },
+    };
+    render(<SidePanel />);
+    expect(screen.getByRole("button", { name: /proyectar/i })).not.toBeDisabled();
   });
 
   it("shows accumulated cost label", () => {
@@ -84,28 +99,39 @@ describe("SidePanel", () => {
     expect(screen.getByText("Coste acumulado")).toBeInTheDocument();
   });
 
-  it("accumulated cost shows 0.00 € when no participants", () => {
-    render(<SidePanel />);
-    expect(screen.getByText("0.00 €")).toBeInTheDocument();
-  });
-
-  it("restores selected category from SharedMap on reconnect without writing to SharedMap", async () => {
+  it("category dropdown calls upsertParticipant with correct category", async () => {
+    const targetCat = CATEGORIES.find((c) => c.name !== "Project Manager")!;
     mockLiveShare.participants = {
-      "test-user-id": { displayName: "Test User", categoryName: "Director", costPerHour: 90 },
+      "u1": { displayName: "Alice", categoryName: "Project Manager", costPerHour: 65, active: true },
     };
-    await act(async () => { render(<SidePanel />); });
-    const btn = screen.getByText("Director").closest("button")!;
-    expect(btn).toHaveClass("active");
-    expect(mockUpsertParticipant).not.toHaveBeenCalled();
+    render(<SidePanel />);
+    const select = screen.getByRole("combobox");
+    await act(async () => {
+      fireEvent.change(select, { target: { value: targetCat.name } });
+    });
+    expect(mockUpsertParticipant).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({ categoryName: targetCat.name, costPerHour: targetCat.costPerHour })
+    );
   });
 
-  it("upsertParticipant is called with real displayName after getContext resolves", async () => {
+  it("auto-registers current user when alone (isReady=true, not in SharedMap)", async () => {
     await act(async () => { render(<SidePanel />); });
-    const btn = screen.getByText("Director").closest("button")!;
-    await act(async () => { fireEvent.click(btn); });
     expect(mockUpsertParticipant).toHaveBeenCalledWith(
       "test-user-id",
-      expect.objectContaining({ displayName: "Test User" })
+      expect.objectContaining({
+        displayName: "Test User",
+        categoryName: "Project Manager",
+        active: true,
+      })
     );
+  });
+
+  it("does not auto-register current user if already in SharedMap", async () => {
+    mockLiveShare.participants = {
+      "test-user-id": { displayName: "Test User", categoryName: "Director", costPerHour: 90, active: true },
+    };
+    await act(async () => { render(<SidePanel />); });
+    expect(mockUpsertParticipant).not.toHaveBeenCalled();
   });
 });
