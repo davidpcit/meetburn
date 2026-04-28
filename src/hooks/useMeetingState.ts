@@ -32,17 +32,22 @@ export function useMeetingState(): MeetingState {
       const key = `meetburn-${meetingId}`;
       channelKeyRef.current = key;
 
+      const now = Date.now();
       const saved = localStorage.getItem(key);
       if (saved) {
         try {
           const snapshot: MeetingSnapshot = JSON.parse(saved);
           participantsRef.current = snapshot.participants ?? {};
-          meetingStartMsRef.current = snapshot.meetingStartMs ?? 0;
+          const startMs = snapshot.meetingStartMs || now;
+          meetingStartMsRef.current = startMs;
           setParticipants(snapshot.participants ?? {});
-          setMeetingStartMs(snapshot.meetingStartMs ?? 0);
+          setMeetingStartMs(startMs);
         } catch {
           // ignore corrupt data
         }
+      } else {
+        meetingStartMsRef.current = now;
+        setMeetingStartMs(now);
       }
 
       const bc = new BroadcastChannel(key);
