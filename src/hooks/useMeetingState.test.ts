@@ -149,4 +149,42 @@ describe("useMeetingState", () => {
     await waitFor(() => expect(result.current.isReady).toBe(true));
     expect(result.current.liveShareError).toBeNull();
   });
+
+  it("channelKey defaults to meetburn-{meetingId} from context", async () => {
+    const { result } = renderHook(() => useMeetingState());
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+    expect(result.current.channelKey).toBe("meetburn-test-meeting-id");
+  });
+
+  it("channelKey uses ?channel= URL param when present", async () => {
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, search: "?channel=meetburn-override" },
+      writable: true, configurable: true,
+    });
+    const { result } = renderHook(() => useMeetingState());
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+    expect(result.current.channelKey).toBe("meetburn-override");
+    Object.defineProperty(window, "location", {
+      value: { ...window.location, search: "" },
+      writable: true, configurable: true,
+    });
+  });
+
+  it("responds to requestSync with current state when participants exist", async () => {
+    const { result } = renderHook(() => useMeetingState());
+    await waitFor(() => expect(result.current.isReady).toBe(true));
+
+    act(() => {
+      result.current.upsertParticipant("u1", { displayName: "Alice", categoryName: "Director", costPerHour: 90, active: true });
+    });
+    mockBCPostMessage.mockClear();
+
+    act(() => {
+      capturedOnMessage?.({ data: { type: "requestSync" } });
+    });
+
+    expect(mockBCPostMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ participants: expect.objectContaining({ u1: expect.any(Object) }) })
+    );
+  });
 });
