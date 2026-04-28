@@ -35,18 +35,19 @@ export function useMeetingState(): MeetingState {
 
   useEffect(() => {
     app.getContext().then((ctx) => {
-      const channelFromUrl = new URLSearchParams(window.location.search).get("channel");
-      const channelFromStorage = localStorage.getItem("meetburn-active-channel");
+      const params = new URLSearchParams(window.location.search);
       const meetingId = ctx.meeting?.id ?? "default";
-      const key = channelFromUrl ?? channelFromStorage ?? `meetburn-${meetingId}`;
+      const key = params.get("channel") ?? localStorage.getItem("meetburn-active-channel") ?? `meetburn-${meetingId}`;
       channelKeyRef.current = key;
       setChannelKey(key);
 
       const now = Date.now();
-      const saved = localStorage.getItem(key);
-      if (saved) {
+
+      // Stage: state encoded directly in URL takes priority (works across Teams contexts)
+      const stateParam = params.get("state");
+      if (stateParam) {
         try {
-          const snapshot: MeetingSnapshot = JSON.parse(saved);
+          const snapshot: MeetingSnapshot = JSON.parse(decodeURIComponent(stateParam));
           participantsRef.current = snapshot.participants ?? {};
           const startMs = snapshot.meetingStartMs > 0 ? snapshot.meetingStartMs : now;
           meetingStartMsRef.current = startMs;
@@ -56,8 +57,22 @@ export function useMeetingState(): MeetingState {
           // ignore corrupt data
         }
       } else {
-        meetingStartMsRef.current = now;
-        setMeetingStartMs(now);
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          try {
+            const snapshot: MeetingSnapshot = JSON.parse(saved);
+            participantsRef.current = snapshot.participants ?? {};
+            const startMs = snapshot.meetingStartMs > 0 ? snapshot.meetingStartMs : now;
+            meetingStartMsRef.current = startMs;
+            setParticipants(snapshot.participants ?? {});
+            setMeetingStartMs(startMs);
+          } catch {
+            // ignore corrupt data
+          }
+        } else {
+          meetingStartMsRef.current = now;
+          setMeetingStartMs(now);
+        }
       }
 
       const bc = new BroadcastChannel(key);
