@@ -26,15 +26,16 @@ Both views are served from the same React SPA. The active view is determined at 
 ┌──────────────────────────────────────────────────────────────┐
 │                        DEV LAPTOP                            │
 │  M365 Agents Toolkit → Publish to Org                        │
-│  vercel --prod        → deploy static SPA                    │
+│  git push master      → GitHub Actions → GitHub Pages        │
 └──────────────────────────────────────────────────────────────┘
                     │                         │
                     ▼                         ▼
          ┌──────────────────┐   ┌─────────────────────────┐
-         │     VERCEL       │   │  TEAMS DEVELOPER PORTAL │
-         │  meet-burn       │   │  MeetBurn (tenant catalog│
-         │  .vercel.app     │   │  — requires admin approval)
-         │  React SPA       │   └────────────┬────────────┘
+         │  GITHUB PAGES    │   │  TEAMS DEVELOPER PORTAL │
+         │  davidpcit       │   │  MeetBurn (tenant catalog│
+         │  .github.io      │   │  — requires admin approval)
+         │  /meetburn       │   └────────────┬────────────┘
+         │  React SPA       │                │
          │  (static)        │                │ app approved
          └────────┬─────────┘                │
                   │  serves app (iframe)     ▼
@@ -62,7 +63,7 @@ Both views are served from the same React SPA. The active view is determined at 
 ```
 
 **Key points:**
-- Vercel serves static HTML/JS — no backend logic
+- GitHub Pages serves static HTML/JS — no backend logic
 - State lives entirely in the organizer's browser (localStorage)
 - Side panel and stage share state via BroadcastChannel (same-origin iframes, same Teams window)
 - No Live Share, no Fluid Relay, no RSC sync permissions needed
@@ -139,9 +140,9 @@ interface ParticipantData {
 ## Key Constraints
 
 - **No database**: State is stored in the organizer's localStorage, ephemeral for the browser session.
-- **No backend server**: Static SPA served from any HTTPS host (or localhost:53000 during dev).
+- **No backend server**: Static SPA served from GitHub Pages (or localhost:53000 during dev).
 - **HTTPS required**: Teams rejects tab content served over HTTP.
-- **Same-origin sync**: Side panel and stage must share the same origin for localStorage and BroadcastChannel to work. Both load from `meet-burn.vercel.app`.
+- **Same-origin sync**: Side panel and stage must share the same origin for localStorage and BroadcastChannel to work. Both load from `https://davidpcit.github.io/meetburn`.
 - **Single organizer**: Only one instance manages participant state. If two people open the side panel simultaneously, they have independent views.
 
 ## Project Structure

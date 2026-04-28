@@ -4,7 +4,8 @@ import basicSsl from "@vitejs/plugin-basic-ssl";
 import { version } from "./package.json";
 
 // Teams requires HTTPS for tab apps
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/meetburn/" : "/",
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
@@ -21,4 +22,4 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
   },
-});
+}));

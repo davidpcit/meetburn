@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@microsoft/teams-js": "^2.22.0",
-    "@vercel/node": "^5.7.13",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

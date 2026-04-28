@@ -5,9 +5,9 @@
   "id": "${{TEAMS_APP_ID}}",
   "developer": {
     "name": "MeetBurn",
-    "websiteUrl": "https://${{TAB_DOMAIN}}",
-    "privacyUrl": "https://${{TAB_DOMAIN}}/privacy",
-    "termsOfUseUrl": "https://${{TAB_DOMAIN}}/terms"
+    "websiteUrl": "${{TAB_ENDPOINT}}",
+    "privacyUrl": "${{TAB_ENDPOINT}}/privacy",
+    "termsOfUseUrl": "${{TAB_ENDPOINT}}/terms"
   },
   "icons": {
     "color": "color.png",
@@ -24,7 +24,7 @@
   "accentColor": "#6264A7",
   "configurableTabs": [
     {
-      "configurationUrl": "https://${{TAB_DOMAIN}}/index.html?view=config",
+      "configurationUrl": "${{TAB_ENDPOINT}}/index.html?view=config",
       "canUpdateConfiguration": false,
       "scopes": [
         "groupchat"
