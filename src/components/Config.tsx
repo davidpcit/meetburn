@@ -8,8 +8,8 @@ export function Config() {
         pages.config.setConfig({
           suggestedDisplayName: "MeetBurn",
           entityId: "meetburn-tab",
-          contentUrl: `${window.location.origin}/index.html`,
-          websiteUrl: `${window.location.origin}`,
+          contentUrl: `${window.location.origin}${import.meta.env.BASE_URL}index.html`,
+          websiteUrl: `${window.location.origin}${import.meta.env.BASE_URL}`,
         });
         saveEvent.notifySuccess();
       });
