@@ -17,6 +17,7 @@ interface MeetingState {
   meetingStartMs: number;
   isReady: boolean;
   liveShareError: null;
+  channelKey: string;
   upsertParticipant: (userId: string, data: ParticipantData) => void;
 }
 
@@ -25,6 +26,7 @@ export function useMeetingState(): MeetingState {
   const [participants, setParticipants] = useState<Record<string, ParticipantData>>({});
   // Initialize to Date.now() so timer never shows epoch-based garbage before context resolves
   const [meetingStartMs, setMeetingStartMs] = useState(() => Date.now());
+  const [channelKey, setChannelKey] = useState("meetburn-default");
 
   const channelRef = useRef<BroadcastChannel | null>(null);
   const channelKeyRef = useRef<string>("meetburn-default");
@@ -33,9 +35,11 @@ export function useMeetingState(): MeetingState {
 
   useEffect(() => {
     app.getContext().then((ctx) => {
+      const channelFromUrl = new URLSearchParams(window.location.search).get("channel");
       const meetingId = ctx.meeting?.id ?? "default";
-      const key = `meetburn-${meetingId}`;
+      const key = channelFromUrl ?? `meetburn-${meetingId}`;
       channelKeyRef.current = key;
+      setChannelKey(key);
 
       const now = Date.now();
       const saved = localStorage.getItem(key);
@@ -116,6 +120,7 @@ export function useMeetingState(): MeetingState {
     meetingStartMs,
     isReady,
     liveShareError: null,
+    channelKey,
     upsertParticipant,
   };
 }

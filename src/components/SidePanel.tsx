@@ -10,7 +10,7 @@ export function SidePanel() {
   const instanceId = useId();
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>("");
-  const { upsertParticipant, participants, totalCostPerHour, meetingStartMs, isReady } = useMeetingState();
+  const { upsertParticipant, participants, totalCostPerHour, meetingStartMs, isReady, channelKey } = useMeetingState();
   const teamsParticipants = useMeetingParticipants();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
@@ -98,7 +98,7 @@ export function SidePanel() {
   const handleShareToStage = () => {
     meeting.shareAppContentToStage(
       (err) => { if (err) console.error("[MeetBurn] shareToStage:", err); },
-      `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage`
+      `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage&channel=${encodeURIComponent(channelKey)}`
     );
   };
 
