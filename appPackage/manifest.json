@@ -45,7 +45,7 @@
         {
           "name": "OnlineMeetingParticipant.Read.Chat",
           "type": "Delegated"
-        },
+        }
       ]
     }
   },
