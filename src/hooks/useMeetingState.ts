@@ -29,7 +29,7 @@ export function useMeetingState(): MeetingState {
   const channelRef = useRef<BroadcastChannel | null>(null);
   const channelKeyRef = useRef<string>("meetburn-default");
   const participantsRef = useRef<Record<string, ParticipantData>>({});
-  const meetingStartMsRef = useRef(() => Date.now());
+  const meetingStartMsRef = useRef(Date.now());
 
   useEffect(() => {
     app.getContext().then((ctx) => {
