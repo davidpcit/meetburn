@@ -151,7 +151,7 @@ export function SidePanel() {
 
       <section className="sp-accumulated">
         <span className="sp-stat-label">Coste acumulado</span>
-        <span className="sp-accumulated-value">{accumulatedCost.toFixed(2)} €</span>
+        <span className="sp-accumulated-value">{accumulatedCost.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
       </section>
 
       <button className="share-btn" onClick={handleShareToStage} disabled={activeCount === 0}>
