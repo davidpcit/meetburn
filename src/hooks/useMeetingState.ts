@@ -7,6 +7,10 @@ interface MeetingSnapshot {
   meetingStartMs: number;
 }
 
+interface SyncRequest {
+  type: "requestSync";
+}
+
 interface MeetingState {
   participants: Record<string, ParticipantData>;
   totalCostPerHour: number;
@@ -19,12 +23,13 @@ interface MeetingState {
 export function useMeetingState(): MeetingState {
   const [isReady, setIsReady] = useState(false);
   const [participants, setParticipants] = useState<Record<string, ParticipantData>>({});
-  const [meetingStartMs, setMeetingStartMs] = useState(0);
+  // Initialize to Date.now() so timer never shows epoch-based garbage before context resolves
+  const [meetingStartMs, setMeetingStartMs] = useState(() => Date.now());
 
   const channelRef = useRef<BroadcastChannel | null>(null);
   const channelKeyRef = useRef<string>("meetburn-default");
   const participantsRef = useRef<Record<string, ParticipantData>>({});
-  const meetingStartMsRef = useRef(0);
+  const meetingStartMsRef = useRef(() => Date.now());
 
   useEffect(() => {
     app.getContext().then((ctx) => {
@@ -52,17 +57,33 @@ export function useMeetingState(): MeetingState {
 
       const bc = new BroadcastChannel(key);
       bc.onmessage = (e: { data: unknown }) => {
-        const snapshot = e.data as MeetingSnapshot;
+        const msg = e.data as MeetingSnapshot | SyncRequest;
+
+        // Another instance loaded and is requesting current state
+        if ((msg as SyncRequest)?.type === "requestSync") {
+          if (Object.keys(participantsRef.current).length > 0) {
+            bc.postMessage({
+              participants: participantsRef.current,
+              meetingStartMs: meetingStartMsRef.current,
+            } satisfies MeetingSnapshot);
+          }
+          return;
+        }
+
+        const snapshot = msg as MeetingSnapshot;
         if (snapshot?.participants) {
           participantsRef.current = snapshot.participants;
           setParticipants(snapshot.participants);
         }
-        if (snapshot?.meetingStartMs !== undefined) {
+        if (snapshot?.meetingStartMs && snapshot.meetingStartMs > 0) {
           meetingStartMsRef.current = snapshot.meetingStartMs;
           setMeetingStartMs(snapshot.meetingStartMs);
         }
       };
       channelRef.current = bc;
+
+      // Ask any already-running instance (side panel) to broadcast its state
+      bc.postMessage({ type: "requestSync" } satisfies SyncRequest);
 
       setIsReady(true);
     });
