@@ -12,29 +12,34 @@ vi.mock("@microsoft/teams-js", () => ({
   meeting: { stopSharingAppContentToStage: (...args: unknown[]) => mockStopSharing(...args) },
 }));
 
-function setSearchParams(params: Record<string, string | number>) {
-  const search = "?" + Object.entries(params).map(([k, v]) => `${k}=${v}`).join("&");
-  Object.defineProperty(window, "location", {
-    value: { ...window.location, search },
-    writable: true,
-    configurable: true,
-  });
-}
+const mockLiveShareState = vi.hoisted(() => ({
+  participants: {} as Record<string, { displayName: string; categoryName: string; costPerHour: number; active: boolean }>,
+  totalCostPerHour: 0,
+  meetingStartMs: FIXED_START,
+  isReady: true,
+  upsertParticipant: vi.fn(),
+  liveShareError: null as string | null,
+}));
+
+vi.mock("../hooks/useLiveShare", () => ({
+  useLiveShare: () => mockLiveShareState,
+}));
 
 // --- Tests ---
 
-describe("MeetingStage — URL param driven", () => {
+describe("MeetingStage", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(FIXED_START);
     mockStopSharing.mockClear();
-    // Default: no URL params
-    setSearchParams({});
+    mockLiveShareState.participants = {};
+    mockLiveShareState.totalCostPerHour = 0;
+    mockLiveShareState.meetingStartMs = FIXED_START;
+    mockLiveShareState.liveShareError = null;
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    setSearchParams({});
   });
 
   it("renders the app title", () => {
@@ -42,14 +47,12 @@ describe("MeetingStage — URL param driven", () => {
     expect(screen.getByText(/meetburn/i)).toBeInTheDocument();
   });
 
-  it("shows 00:00:00 when start equals current time", () => {
-    setSearchParams({ rate: 90, start: FIXED_START, count: 2 });
+  it("shows 00:00:00 at meeting start", () => {
     render(<MeetingStage />);
     expect(screen.getByText("00:00:00")).toBeInTheDocument();
   });
 
   it("timer advances each second", () => {
-    setSearchParams({ rate: 90, start: FIXED_START, count: 1 });
     render(<MeetingStage />);
     act(() => { vi.advanceTimersByTime(1000); });
     expect(screen.getByText("00:00:01")).toBeInTheDocument();
@@ -58,41 +61,23 @@ describe("MeetingStage — URL param driven", () => {
   });
 
   it("shows 0.00 € accumulated cost when no time has passed", () => {
-    setSearchParams({ rate: 90, start: FIXED_START, count: 1 });
     render(<MeetingStage />);
     expect(screen.getByText(/0\.00 €/)).toBeInTheDocument();
   });
 
-  it("accumulated cost grows over time based on rate param", () => {
-    setSearchParams({ rate: 90, start: FIXED_START, count: 1 });
+  it("shows empty state when no participants", () => {
+    render(<MeetingStage />);
+    expect(screen.getByText(/esperando/i)).toBeInTheDocument();
+  });
+
+  it("accumulated cost grows over time with active participants", () => {
+    mockLiveShareState.participants = {
+      u1: { displayName: "Alice", categoryName: "Director", costPerHour: 90, active: true },
+    };
+    mockLiveShareState.totalCostPerHour = 90;
     render(<MeetingStage />);
     act(() => { vi.advanceTimersByTime(3_600_000); });
     expect(screen.getByText(/90\.00 €/)).toBeInTheDocument();
-  });
-
-  it("displays rate param as €/h", () => {
-    setSearchParams({ rate: 155, start: FIXED_START, count: 2 });
-    render(<MeetingStage />);
-    expect(screen.getByText(/155/)).toBeInTheDocument();
-  });
-
-  it("displays participant count from count param", () => {
-    setSearchParams({ rate: 90, start: FIXED_START, count: 3 });
-    render(<MeetingStage />);
-    expect(screen.getByText(/3 participantes/i)).toBeInTheDocument();
-  });
-
-  it("defaults to rate=0 when rate param is missing", () => {
-    setSearchParams({ start: FIXED_START, count: 1 });
-    render(<MeetingStage />);
-    act(() => { vi.advanceTimersByTime(3_600_000); });
-    expect(screen.getByText(/0\.00 €/)).toBeInTheDocument();
-  });
-
-  it("defaults start to Date.now() when start param is missing (timer shows ~0s)", () => {
-    setSearchParams({ rate: 90, count: 1 });
-    render(<MeetingStage />);
-    expect(screen.getByText("00:00:00")).toBeInTheDocument();
   });
 
   it("renders the stop sharing button", () => {
@@ -106,9 +91,9 @@ describe("MeetingStage — URL param driven", () => {
     expect(mockStopSharing).toHaveBeenCalled();
   });
 
-  it("does not render participant table rows", () => {
-    setSearchParams({ rate: 90, start: FIXED_START, count: 2 });
+  it("shows Live Share error when liveShareError is set", () => {
+    mockLiveShareState.liveShareError = "errorCode 1000";
     render(<MeetingStage />);
-    expect(screen.queryByText(/esperando participantes/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/errorCode 1000/i)).toBeInTheDocument();
   });
 });

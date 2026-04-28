@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { app, meeting } from "@microsoft/teams-js";
+import { useLiveShare } from "../hooks/useLiveShare";
 
 function formatHMS(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600).toString().padStart(2, "0");
@@ -8,17 +9,8 @@ function formatHMS(totalSeconds: number): string {
   return `${h}:${m}:${s}`;
 }
 
-function readStageParams(): { rate: number; start: number; count: number } {
-  const params = new URLSearchParams(window.location.search);
-  const rate = parseFloat(params.get("rate") ?? "0") || 0;
-  const startRaw = parseInt(params.get("start") ?? "0", 10);
-  const start = startRaw > 0 ? startRaw : Date.now();
-  const count = parseInt(params.get("count") ?? "0", 10) || 0;
-  return { rate, start, count };
-}
-
 export function MeetingStage() {
-  const { rate, start, count } = readStageParams();
+  const { participants, meetingStartMs, isReady, liveShareError } = useLiveShare();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -27,10 +19,14 @@ export function MeetingStage() {
     return () => clearInterval(id);
   }, []);
 
-  const elapsedMs = nowMs - start;
+  const elapsedMs = nowMs - meetingStartMs;
   const elapsedSec = Math.max(0, Math.floor(elapsedMs / 1000));
   const elapsedHours = Math.max(0, elapsedMs / 3_600_000);
-  const totalCost = rate * elapsedHours;
+
+  const activeEntries = Object.entries(participants).filter(([, p]) => p.active);
+  const activeCostPerHour = activeEntries.reduce((sum, [, p]) => sum + p.costPerHour, 0);
+  const totalCost = activeCostPerHour * elapsedHours;
+  const allEntries = Object.entries(participants);
 
   const handleStopSharing = () => {
     (meeting as unknown as { stopSharingAppContentToStage: (cb: (err: unknown) => void) => void })
@@ -56,12 +52,30 @@ export function MeetingStage() {
         <div className="stage-divider" />
 
         <div className="stage-rate-block">
-          <div className="stage-rate">{rate} €/h</div>
+          <div className="stage-rate">{activeCostPerHour} €/h</div>
           <div className="stage-rate-label">
-            {count} participante{count !== 1 ? "s" : ""}
+            {activeEntries.length} participante{activeEntries.length !== 1 ? "s" : ""}
           </div>
         </div>
       </main>
+
+      <section className="stage-table">
+        <div className="stage-table-head">
+          <span>Participante</span>
+          <span>Categoría</span>
+          <span>€/h</span>
+        </div>
+        {allEntries.map(([id, p]) => (
+          <div key={id} className={`stage-table-row${p.active ? "" : " row-inactive"}`}>
+            <span className="row-name">{p.displayName}{!p.active && <span style={{ opacity: 0.5 }}> · desconectado</span>}</span>
+            <span className="row-cat">{p.categoryName}</span>
+            <span className="row-cost">{p.active ? p.costPerHour : "—"}</span>
+          </div>
+        ))}
+        {allEntries.length === 0 && (
+          <div className="stage-empty">Esperando participantes…</div>
+        )}
+      </section>
 
       <button
         className="stage-stop-btn"
@@ -69,6 +83,15 @@ export function MeetingStage() {
       >
         Dejar de compartir
       </button>
+
+      {!isReady && !liveShareError && (
+        <div className="stage-connecting">Conectando a Live Share…</div>
+      )}
+      {liveShareError && (
+        <div className="stage-connecting" style={{ color: "#ff6b6b", fontSize: "0.8rem", padding: "0.5rem 1rem" }}>
+          ⚠️ {liveShareError}
+        </div>
+      )}
     </div>
   );
 }

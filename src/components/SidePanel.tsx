@@ -1,16 +1,18 @@
 import { useEffect, useId, useState } from "react";
 import { app, authentication, meeting } from "@microsoft/teams-js";
 import { CATEGORIES } from "../types";
-import { useMeetingState } from "../hooks/useMeetingState";
+import { useLiveShare } from "../hooks/useLiveShare";
 import { useMeetingParticipants } from "../hooks/useMeetingParticipants";
+import { DebugPanel } from "./DebugPanel";
 
 const DEFAULT_CATEGORY = CATEGORIES.find((c) => c.name === "Project Manager")!;
+const DEBUG = new URLSearchParams(window.location.search).has("debug");
 
 export function SidePanel() {
   const instanceId = useId();
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string>("");
-  const { upsertParticipant, participants, totalCostPerHour, meetingStartMs, isReady } = useMeetingState();
+  const { upsertParticipant, participants, totalCostPerHour, meetingStartMs, isReady, liveShareError } = useLiveShare();
   const teamsParticipants = useMeetingParticipants();
   const [nowMs, setNowMs] = useState(() => Date.now());
 
@@ -96,10 +98,9 @@ export function SidePanel() {
   };
 
   const handleShareToStage = () => {
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage&rate=${totalCostPerHour}&start=${meetingStartMs}&count=${activeCount}`;
     meeting.shareAppContentToStage(
       (err) => { if (err) console.error("[MeetBurn] shareToStage:", err); },
-      url
+      `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage`
     );
   };
 
@@ -159,8 +160,22 @@ export function SidePanel() {
         Proyectar en pantalla compartida →
       </button>
 
-      {!isReady && (
-        <p className="sp-status"><span className="sp-dot" /> Cargando…</p>
+      {DEBUG && (
+        <DebugPanel
+          participants={participants}
+          meetingStartMs={meetingStartMs}
+          nowMs={nowMs}
+          totalCost={accumulatedCost}
+        />
+      )}
+
+      {!isReady && !liveShareError && (
+        <p className="sp-status"><span className="sp-dot" /> Conectando a Live Share…</p>
+      )}
+      {liveShareError && (
+        <p className="sp-status sp-error" style={{ color: "#ff6b6b", fontSize: "0.75rem", wordBreak: "break-word" }}>
+          ⚠️ {liveShareError}
+        </p>
       )}
     </div>
   );

@@ -32,7 +32,9 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(npm test *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['dependencies'], indent=2\\)\\)\")",
+      "Bash(python -c \"import json; d=json.load\\(open\\('package.json'\\)\\); print\\(d['version']\\)\")"
     ],
     "additionalDirectories": [
       "C:\\DPCLOCALFILES\\03_SCRIPTS\\SDD_PoCs\\MeetBurn"
