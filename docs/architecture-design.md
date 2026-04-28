@@ -15,7 +15,7 @@ Both views are served from the same React SPA. The active view is determined at 
 |---|---|---|
 | UI Framework | React 18 + TypeScript | Standard for Teams Toolkit tab apps |
 | Build Tool | Vite 5 | Fast HMR, native ESM, smaller bundles |
-| State sync (side panel ↔ stage) | localStorage + BroadcastChannel | Same-origin, zero-latency, no backend required |
+| State sync (side panel → stage) | URL parameters (`?rate=&start=&count=`) | Teams desktop isolates side panel and stage in separate Electron renderer processes; localStorage and BroadcastChannel do not cross process boundaries (ADR-014) |
 | Teams Integration | Teams JS SDK v2 | Frame context detection, getParticipants, shareAppContentToStage |
 | Styling | Plain CSS (custom) | No external UI library dependency |
 | Packaging | Teams Toolkit v5 / M365 Agents Toolkit | Manifest generation, local dev HTTPS, app upload |
@@ -65,7 +65,8 @@ Both views are served from the same React SPA. The active view is determined at 
 **Key points:**
 - GitHub Pages serves static HTML/JS — no backend logic
 - State lives entirely in the organizer's browser (localStorage)
-- Side panel and stage share state via BroadcastChannel (same-origin iframes, same Teams window)
+- Side panel passes `rate`, `start`, `count` to stage via URL params at share-time (ADR-014)
+- Stage reads URL params on mount and calculates cost locally — no cross-context sync needed
 - No Live Share, no Fluid Relay, no RSC sync permissions needed
 - RSC permissions required in manifest: `MeetingStage.Write.Chat`, `OnlineMeetingParticipant.Read.Chat`
 
@@ -118,7 +119,7 @@ Organizer (Teams client)
 2. **Participant poll**: `useMeetingParticipants` calls `meeting.getParticipants()` every 15 s → returns current attendees.
 3. **Self-registration**: If the organizer is alone, `app.getContext()` provides their own ID and name.
 4. **Category assignment**: Organizer selects a category per participant → `useMeetingState` updates local state → serialises to `localStorage[meetingId]`.
-5. **Stage sync**: `MeetingStage` listens to `BroadcastChannel` messages → re-renders on every state change from the side panel.
+5. **Stage sync**: When organizer clicks "Proyectar", `SidePanel` calls `shareAppContentToStage` with URL params `?rate=X&start=Y&count=N`. `MeetingStage` reads those params on mount and runs a local timer from there — no BroadcastChannel needed (ADR-014).
 6. **Cost calculation**: `totalCostPerHour` = sum of active participants' `costPerHour`; `totalCost` = `totalCostPerHour × elapsedHours` since meeting start.
 
 ## Key Data Structures

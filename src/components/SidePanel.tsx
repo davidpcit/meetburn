@@ -96,10 +96,10 @@ export function SidePanel() {
   };
 
   const handleShareToStage = () => {
-    const stageState = encodeURIComponent(JSON.stringify({ participants, meetingStartMs }));
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage&rate=${totalCostPerHour}&start=${meetingStartMs}&count=${activeCount}`;
     meeting.shareAppContentToStage(
       (err) => { if (err) console.error("[MeetBurn] shareToStage:", err); },
-      `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage&state=${stageState}`
+      url
     );
   };
 

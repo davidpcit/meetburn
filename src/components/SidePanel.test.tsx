@@ -134,4 +134,27 @@ describe("SidePanel", () => {
     await act(async () => { render(<SidePanel />); });
     expect(mockUpsertParticipant).not.toHaveBeenCalled();
   });
+
+  it("handleShareToStage builds URL with rate, start, count params", async () => {
+    const { meeting } = await import("@microsoft/teams-js");
+    const shareMock = vi.mocked(meeting.shareAppContentToStage);
+    shareMock.mockClear();
+
+    mockLiveShare.participants = {
+      "u1": { displayName: "Alice", categoryName: "Director", costPerHour: 90, active: true },
+      "u2": { displayName: "Bob", categoryName: "C-Level", costPerHour: 130, active: true },
+    };
+    mockLiveShare.totalCostPerHour = 220;
+    mockLiveShare.meetingStartMs = 1714300000000;
+
+    render(<SidePanel />);
+    fireEvent.click(screen.getByRole("button", { name: /proyectar/i }));
+
+    expect(shareMock).toHaveBeenCalledOnce();
+    const url: string = shareMock.mock.calls[0][1] as string;
+    expect(url).toContain("rate=220");
+    expect(url).toContain("start=1714300000000");
+    expect(url).toContain("count=2");
+    expect(url).toContain("view=stage");
+  });
 });
