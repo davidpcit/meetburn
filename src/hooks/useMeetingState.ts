@@ -38,7 +38,7 @@ export function useMeetingState(): MeetingState {
         try {
           const snapshot: MeetingSnapshot = JSON.parse(saved);
           participantsRef.current = snapshot.participants ?? {};
-          const startMs = snapshot.meetingStartMs || now;
+          const startMs = snapshot.meetingStartMs > 0 ? snapshot.meetingStartMs : now;
           meetingStartMsRef.current = startMs;
           setParticipants(snapshot.participants ?? {});
           setMeetingStartMs(startMs);

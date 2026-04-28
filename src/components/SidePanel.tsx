@@ -98,7 +98,7 @@ export function SidePanel() {
   const handleShareToStage = () => {
     meeting.shareAppContentToStage(
       (err) => { if (err) console.error("[MeetBurn] shareToStage:", err); },
-      `${window.location.origin}/index.html?view=stage`
+      `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage`
     );
   };
 
