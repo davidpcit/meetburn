@@ -36,8 +36,9 @@ export function useMeetingState(): MeetingState {
   useEffect(() => {
     app.getContext().then((ctx) => {
       const channelFromUrl = new URLSearchParams(window.location.search).get("channel");
+      const channelFromStorage = localStorage.getItem("meetburn-active-channel");
       const meetingId = ctx.meeting?.id ?? "default";
-      const key = channelFromUrl ?? `meetburn-${meetingId}`;
+      const key = channelFromUrl ?? channelFromStorage ?? `meetburn-${meetingId}`;
       channelKeyRef.current = key;
       setChannelKey(key);
 

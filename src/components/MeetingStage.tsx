@@ -39,7 +39,7 @@ export function MeetingStage() {
 
       <header className="stage-header">
         <span className="stage-logo">🔥</span>
-        <h1 className="stage-title">MeetBurn</h1>
+        <h1 className="stage-title">MeetBurn <span style={{ fontSize: "0.5em", opacity: 0.4, fontWeight: "normal" }}>v{__APP_VERSION__}</span></h1>
         <div className="stage-timer">{formatHMS(elapsedSec)}</div>
       </header>
 

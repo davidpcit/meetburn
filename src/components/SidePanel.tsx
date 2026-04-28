@@ -96,6 +96,7 @@ export function SidePanel() {
   };
 
   const handleShareToStage = () => {
+    localStorage.setItem("meetburn-active-channel", channelKey);
     meeting.shareAppContentToStage(
       (err) => { if (err) console.error("[MeetBurn] shareToStage:", err); },
       `${window.location.origin}${import.meta.env.BASE_URL}index.html?view=stage&channel=${encodeURIComponent(channelKey)}`
