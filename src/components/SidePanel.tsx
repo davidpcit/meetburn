@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { app, authentication, meeting } from "@microsoft/teams-js";
 import { CATEGORIES } from "../types";
 import { useLiveShare } from "../hooks/useLiveShare";
@@ -104,6 +104,32 @@ export function SidePanel() {
     );
   };
 
+  const [newName, setNewName] = useState("");
+  const newCatRef = useRef(DEFAULT_CATEGORY.name);
+
+  const handleAddParticipant = () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const cat = CATEGORIES.find((c) => c.name === newCatRef.current) ?? DEFAULT_CATEGORY;
+    upsertParticipant(`manual-${Date.now()}`, {
+      displayName: trimmed,
+      categoryName: cat.name,
+      costPerHour: cat.costPerHour,
+      active: true,
+      manuallyAdded: true,
+    });
+    setNewName("");
+  };
+
+  const handleDeleteParticipant = (id: string) => {
+    if (!participants[id]) return;
+    upsertParticipant(id, { ...participants[id], active: false });
+  };
+
+  const visibleParticipants = Object.entries(participants).filter(
+    ([, p]) => !(p.manuallyAdded && !p.active)
+  );
+
   const activeCount = Object.values(participants).filter((p) => p.active).length;
   const accumulatedCost = totalCostPerHour * Math.max(0, (nowMs - meetingStartMs) / 3_600_000);
 
@@ -116,10 +142,10 @@ export function SidePanel() {
 
       <section className="sp-participant-list">
         <p className="sp-label">Selecciona tu categoría:</p>
-        {Object.entries(participants).length === 0 && (
+        {visibleParticipants.length === 0 && (
           <p className="sp-empty">Esperando participantes…</p>
         )}
-        {Object.entries(participants).map(([id, p]) => (
+        {visibleParticipants.map(([id, p]) => (
           <div key={id} className={`sp-participant-row${p.active ? "" : " inactive"}`}>
             <span className="sp-participant-name">
               {p.displayName}
@@ -136,8 +162,39 @@ export function SidePanel() {
                 <option key={cat.name} value={cat.name}>{cat.name} — {cat.costPerHour}€/h</option>
               ))}
             </select>
+            {p.manuallyAdded && p.active && (
+              <button
+                className="sp-delete-btn"
+                aria-label="Eliminar"
+                onClick={() => handleDeleteParticipant(id)}
+              >×</button>
+            )}
           </div>
         ))}
+        <div className="sp-add-form">
+          <input
+            className="sp-add-input"
+            type="text"
+            placeholder="Nombre del participante"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAddParticipant(); }}
+          />
+          <select
+            className="sp-category-select"
+            defaultValue={DEFAULT_CATEGORY.name}
+            onChange={(e) => { newCatRef.current = e.target.value; }}
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat.name} value={cat.name}>{cat.name} — {cat.costPerHour}€/h</option>
+            ))}
+          </select>
+          <button
+            className="sp-add-btn"
+            onClick={handleAddParticipant}
+            disabled={!newName.trim()}
+          >Añadir</button>
+        </div>
       </section>
 
       <section className="sp-summary">

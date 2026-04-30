@@ -101,7 +101,7 @@ describe("SidePanel", () => {
       "u1": { displayName: "Alice", categoryName: "Project Manager", costPerHour: 65, active: true },
     };
     render(<SidePanel />);
-    const select = screen.getByRole("combobox");
+    const select = screen.getAllByRole("combobox")[0];
     await act(async () => {
       fireEvent.change(select, { target: { value: targetCat.name } });
     });
@@ -129,6 +129,69 @@ describe("SidePanel", () => {
     };
     await act(async () => { render(<SidePanel />); });
     expect(mockUpsertParticipant).not.toHaveBeenCalled();
+  });
+
+  // --- Manual add participant ---
+
+  it("renders the add participant form with name input and add button", () => {
+    render(<SidePanel />);
+    expect(screen.getByPlaceholderText(/nombre del participante/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^añadir$/i })).toBeInTheDocument();
+  });
+
+  it("add button is disabled when name input is empty", () => {
+    render(<SidePanel />);
+    expect(screen.getByRole("button", { name: /^añadir$/i })).toBeDisabled();
+  });
+
+  it("add button is enabled when name input has text", () => {
+    render(<SidePanel />);
+    fireEvent.change(screen.getByPlaceholderText(/nombre del participante/i), { target: { value: "Carlos" } });
+    expect(screen.getByRole("button", { name: /^añadir$/i })).not.toBeDisabled();
+  });
+
+  it("clicking add calls upsertParticipant with manuallyAdded=true and clears input", async () => {
+    render(<SidePanel />);
+    fireEvent.change(screen.getByPlaceholderText(/nombre del participante/i), { target: { value: "Carlos" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^añadir$/i }));
+    });
+    expect(mockUpsertParticipant).toHaveBeenCalledWith(
+      expect.stringMatching(/^manual-/),
+      expect.objectContaining({ displayName: "Carlos", active: true, manuallyAdded: true })
+    );
+    expect(screen.getByPlaceholderText(/nombre del participante/i)).toHaveValue("");
+  });
+
+  it("shows delete button only for manually added participants", () => {
+    mockLiveShare.participants = {
+      "u1": { displayName: "Alice", categoryName: "Director", costPerHour: 90, active: true },
+      "manual-1": { displayName: "Carlos", categoryName: "Project Manager", costPerHour: 65, active: true, manuallyAdded: true },
+    };
+    render(<SidePanel />);
+    expect(screen.getAllByRole("button", { name: /eliminar/i })).toHaveLength(1);
+  });
+
+  it("clicking delete marks manually added participant as inactive", async () => {
+    mockLiveShare.participants = {
+      "manual-1": { displayName: "Carlos", categoryName: "Project Manager", costPerHour: 65, active: true, manuallyAdded: true },
+    };
+    render(<SidePanel />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /eliminar/i }));
+    });
+    expect(mockUpsertParticipant).toHaveBeenCalledWith(
+      "manual-1",
+      expect.objectContaining({ active: false })
+    );
+  });
+
+  it("inactive manually added participants are hidden from the list", () => {
+    mockLiveShare.participants = {
+      "manual-1": { displayName: "Carlos", categoryName: "Project Manager", costPerHour: 65, active: false, manuallyAdded: true },
+    };
+    render(<SidePanel />);
+    expect(screen.queryByText("Carlos")).not.toBeInTheDocument();
   });
 
   it("handleShareToStage builds URL with view=stage and BASE_URL path", async () => {

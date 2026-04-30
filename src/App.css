@@ -122,6 +122,50 @@ body {
 }
 .sp-category-select:disabled { cursor: not-allowed; color: #999; }
 
+.sp-delete-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+.sp-delete-btn:hover { color: #c50f1f; }
+
+.sp-add-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sp-add-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: #fafafa;
+  color: #242424;
+}
+.sp-add-input::placeholder { color: #aaa; }
+.sp-add-btn {
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  background: #6264a7;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sp-add-btn:disabled { background: #c8c6c4; cursor: not-allowed; }
+.sp-add-btn:not(:disabled):hover { background: #4f52a3; }
+
 /* Summary */
 .sp-summary {
   display: flex;

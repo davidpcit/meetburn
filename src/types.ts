@@ -16,4 +16,5 @@ export interface ParticipantData {
   categoryName: string;
   costPerHour: number;
   active: boolean;
+  manuallyAdded?: boolean;
 }
