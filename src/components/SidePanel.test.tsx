@@ -9,7 +9,7 @@ const mockUpsertParticipant = vi.fn();
 
 const mockLiveShare = vi.hoisted(() => ({
   upsertParticipant: vi.fn(),
-  participants: {} as Record<string, { displayName: string; categoryName: string; costPerHour: number; active: boolean }>,
+  participants: {} as Record<string, { displayName: string; categoryName: string; costPerHour: number; active: boolean; manuallyAdded?: boolean }>,
   totalCostPerHour: 0,
   meetingStartMs: Date.now() - 60_000,
   isReady: true,
